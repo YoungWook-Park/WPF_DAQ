@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(dotnet new classlib *)",
+      "PowerShell(dotnet new wpf *)"
+    ]
+  }
+}

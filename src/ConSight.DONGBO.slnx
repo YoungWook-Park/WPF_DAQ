@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Bi.ConSight.SqlAgent/Bi.ConSight.SqlAgent.csproj" />
+  <Project Path="ConSight.DONGBO.DAQ/ConSight.DONGBO.DAQ.csproj" />
+</Solution>

@@ -1,0 +1,379 @@
+<!--
+  Step 5 DevExpress 제거:
+    AS-IS  dxe:DateEdit → TO-BE  DatePicker
+    AS-IS  dxg:GridControl / dxg:TableView → TO-BE  DataGrid + VirtualizingStackPanel
+    AS-IS  dxg:GridColumn.CellStyle (DevEx) → TO-BE  DataGridTextColumn.ElementStyle (DataTrigger)
+    AS-IS  dx:DXImage → TO-BE  TextBlock (아이콘 대체)
+    AS-IS  dxmvvm:EventToCommand → TO-BE  i:InvokeCommandAction (이미 일부 사용 중)
+-->
+<UserControl x:Class="ConSight.DAQ.Views.Inquiry_OP200_ResourceLotHistoryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:ConSight.DAQ.Views"
+             xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=local:Inquiry_OP200_ResourceLotHistoryViewModel}"
+             d:DesignHeight="850" d:DesignWidth="1600"
+             x:Name="Uc_Name" Background="#F6F6F6">
+
+    <i:Interaction.Triggers>
+        <i:EventTrigger EventName="Loaded">
+            <i:InvokeCommandAction Command="{Binding Cmd_UcLoadedCommand}"/>
+        </i:EventTrigger>
+    </i:Interaction.Triggers>
+
+    <UserControl.Resources>
+        <!-- NG 판정 셀: Orange 배경 -->
+        <Style x:Key="NgCellStyle" TargetType="TextBlock">
+            <Style.Triggers>
+                <Trigger Property="Text" Value="NG">
+                    <Setter Property="Background" Value="Orange"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 공통 DataGrid 스타일 -->
+        <Style x:Key="CommonGrid" TargetType="DataGrid">
+            <Setter Property="AutoGenerateColumns"       Value="False"/>
+            <Setter Property="IsReadOnly"                Value="True"/>
+            <Setter Property="SelectionMode"             Value="Single"/>
+            <Setter Property="SelectionUnit"             Value="FullRow"/>
+            <Setter Property="CanUserAddRows"            Value="False"/>
+            <Setter Property="CanUserDeleteRows"         Value="False"/>
+            <Setter Property="CanUserReorderColumns"     Value="True"/>
+            <Setter Property="CanUserResizeRows"         Value="False"/>
+            <Setter Property="GridLinesVisibility"       Value="All"/>
+            <Setter Property="FontSize"                  Value="12"/>
+            <Setter Property="Background"                Value="White"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VirtualizingPanel.IsVirtualizing"     Value="True"/>
+            <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling"/>
+            <Setter Property="ScrollViewer.CanContentScroll"        Value="True"/>
+        </Style>
+
+        <!-- 헤더 가운데 정렬 -->
+        <Style x:Key="CenterHeader" TargetType="DataGridColumnHeader">
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+
+        <!-- 데이터 셀 가운데 정렬 -->
+        <Style x:Key="CenterCell" TargetType="TextBlock">
+            <Setter Property="TextAlignment"     Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="55"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ── 검색 바 ─────────────────────────────────────────────────────── -->
+        <Border Grid.Row="0" Margin="5" Background="White" CornerRadius="5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="모델명" VerticalAlignment="Center" Margin="8 0 4 0"/>
+                <ComboBox  Grid.Column="1" Width="150" Margin="4"
+                           ItemsSource="{Binding UiCBox_ModelItemSource}"
+                           SelectedItem="{Binding UiCBox_ModelSelectedItem}"/>
+
+                <Border Grid.Column="2" BorderBrush="LightGray" BorderThickness="1 0 0 0" Margin="4">
+                    <TextBlock Text="생산 날짜" VerticalAlignment="Center" Margin="4 0"/>
+                </Border>
+
+                <!-- AS-IS: dxe:DateEdit  TO-BE: DatePicker (WPF 내장) -->
+                <DatePicker Grid.Column="3" Width="130" Margin="4"
+                            SelectedDate="{Binding UiDate_ProcStartDate}"/>
+                <TextBlock  Grid.Column="4" Text="~" VerticalAlignment="Center" Margin="4 0"/>
+                <DatePicker Grid.Column="5" Width="130" Margin="4"
+                            SelectedDate="{Binding UiDate_ProcEndDate}"/>
+
+                <Border Grid.Column="6" BorderBrush="LightGray" BorderThickness="1 0 0 0" Margin="4">
+                    <Button Command="{Binding Cmd_Find}" Width="60" Margin="4" Padding="4">
+                        <TextBlock Text="조회" FontSize="13"/>
+                    </Button>
+                </Border>
+
+                <!-- 요약 카운터 -->
+                <Grid Grid.Column="7" Margin="8 0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="70"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="70"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="70"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="70"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="생산"  VerticalAlignment="Center" Margin="6 0" Foreground="Gray"/>
+                    <Border    Grid.Column="1" CornerRadius="4" Background="White" Margin="4 2" BorderBrush="LightGray" BorderThickness="1">
+                        <TextBlock Text="{Binding UiTBlock_ProductionQty}" FontSize="18" FontWeight="Bold" TextAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <TextBlock Grid.Column="2" Text="양품"  VerticalAlignment="Center" Margin="6 0" Foreground="Gray"/>
+                    <Border    Grid.Column="3" CornerRadius="4" Background="Green" Margin="4 2">
+                        <TextBlock Text="{Binding UiTBlock_GoodsQty}" FontSize="18" FontWeight="Bold" TextAlignment="Center" VerticalAlignment="Center" Foreground="White"/>
+                    </Border>
+
+                    <TextBlock Grid.Column="4" Text="불량"  VerticalAlignment="Center" Margin="6 0" Foreground="Gray"/>
+                    <Border    Grid.Column="5" CornerRadius="4" Background="Orange" Margin="4 2">
+                        <TextBlock Text="{Binding UiTBlock_DefectiveQty}" FontSize="18" FontWeight="Bold" TextAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <TextBlock Grid.Column="6" Text="양품율[%]" VerticalAlignment="Center" Margin="6 0" Foreground="Gray"/>
+                    <Border    Grid.Column="7" CornerRadius="4" Background="White" Margin="4 2" BorderBrush="LightGray" BorderThickness="1">
+                        <TextBlock Text="{Binding UiTBlock_GoodQualityRation}" FontSize="18" FontWeight="Bold" TextAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- ── 탭 영역 ─────────────────────────────────────────────────────── -->
+        <TabControl Grid.Row="1" Margin="5" Background="Transparent">
+
+            <!-- 전체 생산 -->
+            <TabItem Header="전체">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <!-- AS-IS: dxg:GridControl + dxg:TableView
+                         TO-BE: DataGrid + VirtualizingStackPanel(Recycling) -->
+                    <DataGrid x:Name="UiDg_All"
+                              Style="{StaticResource CommonGrid}"
+                              ItemsSource="{Binding UiDg_ResourceLotHisList, Mode=OneWay}"
+                              SelectedItem="{Binding UiDg_ResourceLotHisListSelectedItem}"
+                              MinWidth="5700">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="번호"                  Binding="{Binding No}"                Width="50"   ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="작업 날짜"              Binding="{Binding Date_Time}"         Width="180"  ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="Repair"               Binding="{Binding Repair}"            Width="70"   ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="모델"                  Binding="{Binding Model}"             Width="110"  ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="샤프트&#x0a;시리얼 번호" Binding="{Binding Material01_Serial}"  Width="200"  ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="기어&#x0a;시리얼 번호"   Binding="{Binding Material02_Serial}"  Width="200"  ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+
+                            <!-- 종합판정: NG → Orange -->
+                            <DataGridTextColumn Header="종합판정" Binding="{Binding TotalJudge}" Width="80" HeaderStyle="{StaticResource CenterHeader}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CenterCell}">
+                                        <Style.Triggers>
+                                            <Trigger Property="Text" Value="NG">
+                                                <Setter Property="Background" Value="Orange"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- 스페이서 -->
+                            <DataGridTextColumn Header="스페이서 R1&#x0a;LOAD [KN]"    Binding="{Binding APD01}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="스페이서 R1&#x0a;STROKE [mm]"  Binding="{Binding APD02}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="스페이서 R2&#x0a;LOAD [KN]"    Binding="{Binding APD03}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="스페이서 R2&#x0a;STROKE [mm]"  Binding="{Binding APD04}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="스페이서 P&#x0a;LOAD [KN]"     Binding="{Binding APD05}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="스페이서 P&#x0a;STROKE [mm]"   Binding="{Binding APD06}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="스페이서&#x0a;JUDGE"           Binding="{Binding APD07}" Width="80"  HeaderStyle="{StaticResource CenterHeader}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CenterCell}">
+                                        <Style.Triggers><Trigger Property="Text" Value="NG"><Setter Property="Background" Value="Orange"/></Trigger></Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="스페이서&#x0a;STATION"         Binding="{Binding APD08}" Width="80"  ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+
+                            <!-- 베어링 -->
+                            <DataGridTextColumn Header="베어링 R1&#x0a;LOAD [KN]"    Binding="{Binding APD09}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="베어링 R1&#x0a;STROKE [mm]"  Binding="{Binding APD10}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="베어링 R2&#x0a;LOAD [KN]"    Binding="{Binding APD11}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="베어링 R2&#x0a;STROKE [mm]"  Binding="{Binding APD12}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="베어링 P&#x0a;LOAD [KN]"     Binding="{Binding APD13}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="베어링 P&#x0a;STROKE [mm]"   Binding="{Binding APD14}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="베어링&#x0a;판정"             Binding="{Binding APD15}" Width="80"  HeaderStyle="{StaticResource CenterHeader}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CenterCell}">
+                                        <Style.Triggers><Trigger Property="Text" Value="NG"><Setter Property="Background" Value="Orange"/></Trigger></Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="베어링 INDEX&#x0a;STATION"   Binding="{Binding APD16}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+
+                            <!-- 스냅링 -->
+                            <DataGridTextColumn Header="스냅링 홈폭&#x0a;0도[mm]"           Binding="{Binding APD17}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="스냅링 홈폭&#x0a;180도[mm]"         Binding="{Binding APD18}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="스냅링 홈폭&#x0a;GRADE DATA[mm]"    Binding="{Binding APD19}" Width="120" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="스냅링 홈폭&#x0a;GRADE"             Binding="{Binding APD20}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="스냅링 홈폭&#x0a;판정"              Binding="{Binding APD21}" Width="80"  HeaderStyle="{StaticResource CenterHeader}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CenterCell}">
+                                        <Style.Triggers><Trigger Property="Text" Value="NG"><Setter Property="Background" Value="Orange"/></Trigger></Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="스냅링높이&#x0a;두께[mm]"            Binding="{Binding APD22}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="스냅링 높이&#x0a;판정"              Binding="{Binding APD23}" Width="80"  HeaderStyle="{StaticResource CenterHeader}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CenterCell}">
+                                        <Style.Triggers><Trigger Property="Text" Value="NG"><Setter Property="Background" Value="Orange"/></Trigger></Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="스냅링 검사&#x0a;판정"              Binding="{Binding APD24}" Width="80"  HeaderStyle="{StaticResource CenterHeader}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CenterCell}">
+                                        <Style.Triggers><Trigger Property="Text" Value="NG"><Setter Property="Background" Value="Orange"/></Trigger></Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- 앤드 플레이트 -->
+                            <DataGridTextColumn Header="앤드 플레이트&#x0a;DATA"     Binding="{Binding APD25}" Width="100" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="앤드 플레이트&#x0a;판정"     Binding="{Binding APD26}" Width="80"  HeaderStyle="{StaticResource CenterHeader}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CenterCell}">
+                                        <Style.Triggers><Trigger Property="Text" Value="NG"><Setter Property="Background" Value="Orange"/></Trigger></Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- RUN OUT CHECK -->
+                            <DataGridTextColumn Header="RUN OUT&#x0a;CHECK INPUT[mm]"  Binding="{Binding APD27}" Width="130" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="RUN OUT&#x0a;INPUT 판정"       Binding="{Binding APD28}" Width="100" HeaderStyle="{StaticResource CenterHeader}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CenterCell}">
+                                        <Style.Triggers><Trigger Property="Text" Value="NG"><Setter Property="Background" Value="Orange"/></Trigger></Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="RUN OUT&#x0a;CHECK SPACE[mm]"  Binding="{Binding APD29}" Width="130" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="RUN OUT&#x0a;SPACE 판정"       Binding="{Binding APD30}" Width="100" HeaderStyle="{StaticResource CenterHeader}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CenterCell}">
+                                        <Style.Triggers><Trigger Property="Text" Value="NG"><Setter Property="Background" Value="Orange"/></Trigger></Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- 가이드링 -->
+                            <DataGridTextColumn Header="가이드링&#x0a;압입 판정"         Binding="{Binding APD31}" Width="100" HeaderStyle="{StaticResource CenterHeader}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CenterCell}">
+                                        <Style.Triggers><Trigger Property="Text" Value="NG"><Setter Property="Background" Value="Orange"/></Trigger></Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="가이드링&#x0a;단거리 Check[mm]" Binding="{Binding APD32}" Width="120" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="가이드링&#x0a;단거리 판정"      Binding="{Binding APD33}" Width="100" HeaderStyle="{StaticResource CenterHeader}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CenterCell}">
+                                        <Style.Triggers><Trigger Property="Text" Value="NG"><Setter Property="Background" Value="Orange"/></Trigger></Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- LOTITE -->
+                            <DataGridTextColumn Header="LOTITE&#x0a;도포 판정"  Binding="{Binding APD34}" Width="90" HeaderStyle="{StaticResource CenterHeader}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CenterCell}">
+                                        <Style.Triggers><Trigger Property="Text" Value="NG"><Setter Property="Background" Value="Orange"/></Trigger></Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="LOTITE&#x0a;비전 판정"  Binding="{Binding APD35}" Width="90" HeaderStyle="{StaticResource CenterHeader}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CenterCell}">
+                                        <Style.Triggers><Trigger Property="Text" Value="NG"><Setter Property="Background" Value="Orange"/></Trigger></Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- Shaft Oil Cap Press -->
+                            <DataGridTextColumn Header="Shaft Oil&#x0a;Cap R1 Load[KN]"    Binding="{Binding APD36}" Width="120" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="Shaft Oil&#x0a;Cap R1 Stroke[mm]"  Binding="{Binding APD37}" Width="120" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="Shaft Oil&#x0a;Cap R2 Load[KN]"    Binding="{Binding APD38}" Width="120" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="Shaft Oil&#x0a;Cap R2 Stroke[mm]"  Binding="{Binding APD39}" Width="120" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="Shaft Oil&#x0a;Cap P Load[KN]"     Binding="{Binding APD40}" Width="120" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="Shaft Oil&#x0a;Cap P Stroke[mm]"   Binding="{Binding APD41}" Width="120" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="Shaft Oil&#x0a;Cap Press 판정"     Binding="{Binding APD42}" Width="110" HeaderStyle="{StaticResource CenterHeader}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CenterCell}">
+                                        <Style.Triggers><Trigger Property="Text" Value="NG"><Setter Property="Background" Value="Orange"/></Trigger></Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Shaft Oil&#x0a;Cap Check[mm]"      Binding="{Binding APD43}" Width="120" ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
+                            <DataGridTextColumn Header="Shaft Oil&#x0a;Cap Check 판정"     Binding="{Binding APD44}" Width="110" HeaderStyle="{StaticResource CenterHeader}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CenterCell}">
+                                        <Style.Triggers><Trigger Property="Text" Value="NG"><Setter Property="Background" Value="Orange"/></Trigger></Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- 양품 -->
+            <TabItem Header="양품">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <DataGrid Style="{StaticResource CommonGrid}"
+                              ItemsSource="{Binding UiDg_ResourceLotHisFinishedList, Mode=OneWay}"
+                              MinWidth="5700"
+                              ColumnHeaderStyle="{StaticResource CenterHeader}">
+                        <!-- 컬럼 정의는 전체 탭과 동일 — 공유 Style로 관리 권장 (Step 6 이후 리팩토링) -->
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="번호"       Binding="{Binding No}"                Width="50"  ElementStyle="{StaticResource CenterCell}"/>
+                            <DataGridTextColumn Header="작업 날짜"   Binding="{Binding Date_Time}"         Width="180" ElementStyle="{StaticResource CenterCell}"/>
+                            <DataGridTextColumn Header="모델"        Binding="{Binding Model}"             Width="110" ElementStyle="{StaticResource CenterCell}"/>
+                            <DataGridTextColumn Header="샤프트 시리얼" Binding="{Binding Material01_Serial}" Width="200" ElementStyle="{StaticResource CenterCell}"/>
+                            <DataGridTextColumn Header="기어 시리얼"  Binding="{Binding Material02_Serial}" Width="200" ElementStyle="{StaticResource CenterCell}"/>
+                            <DataGridTextColumn Header="종합판정"    Binding="{Binding TotalJudge}"        Width="80"  ElementStyle="{StaticResource CenterCell}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- 불량 -->
+            <TabItem Header="불량">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <DataGrid Style="{StaticResource CommonGrid}"
+                              ItemsSource="{Binding UiDg_ResourceLotHisDefectiveList, Mode=OneWay}"
+                              MinWidth="5700"
+                              ColumnHeaderStyle="{StaticResource CenterHeader}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="번호"       Binding="{Binding No}"                Width="50"  ElementStyle="{StaticResource CenterCell}"/>
+                            <DataGridTextColumn Header="작업 날짜"   Binding="{Binding Date_Time}"         Width="180" ElementStyle="{StaticResource CenterCell}"/>
+                            <DataGridTextColumn Header="모델"        Binding="{Binding Model}"             Width="110" ElementStyle="{StaticResource CenterCell}"/>
+                            <DataGridTextColumn Header="샤프트 시리얼" Binding="{Binding Material01_Serial}" Width="200" ElementStyle="{StaticResource CenterCell}"/>
+                            <DataGridTextColumn Header="기어 시리얼"  Binding="{Binding Material02_Serial}" Width="200" ElementStyle="{StaticResource CenterCell}"/>
+                            <DataGridTextColumn Header="종합판정"    Binding="{Binding TotalJudge}"        Width="80">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CenterCell}">
+                                        <Style.Triggers>
+                                            <Trigger Property="Text" Value="NG">
+                                                <Setter Property="Background" Value="Orange"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </ScrollViewer>
+            </TabItem>
+
+        </TabControl>
+    </Grid>
+</UserControl>
