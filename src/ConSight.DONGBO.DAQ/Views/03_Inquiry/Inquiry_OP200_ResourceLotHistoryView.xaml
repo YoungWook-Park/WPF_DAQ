@@ -68,7 +68,9 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="55"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="*" MinHeight="150"/>
+            <RowDefinition Height="5"/>
+            <RowDefinition Height="130" MinHeight="60"/>
         </Grid.RowDefinitions>
 
         <!-- ── 검색 바 ─────────────────────────────────────────────────────── -->
@@ -148,14 +150,13 @@
 
             <!-- 전체 생산 -->
             <TabItem Header="전체">
-                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                    <!-- AS-IS: dxg:GridControl + dxg:TableView
-                         TO-BE: DataGrid + VirtualizingStackPanel(Recycling) -->
-                    <DataGrid x:Name="UiDg_All"
-                              Style="{StaticResource CommonGrid}"
-                              ItemsSource="{Binding UiDg_ResourceLotHisList, Mode=OneWay}"
-                              SelectedItem="{Binding UiDg_ResourceLotHisListSelectedItem}"
-                              MinWidth="5700">
+                <!-- ScrollViewer 제거: DataGrid 내부 ScrollViewer가 가상화와 함께 스크롤을 처리.
+                     외부 ScrollViewer가 있으면 DataGrid 뷰포트가 무한대가 되어 가상화 무력화됨. -->
+                <DataGrid x:Name="UiDg_All"
+                          Style="{StaticResource CommonGrid}"
+                          ItemsSource="{Binding UiDg_ResourceLotHisList, Mode=OneWay}"
+                          SelectedItem="{Binding UiDg_ResourceLotHisListSelectedItem}"
+                          MinWidth="5700">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="번호"                  Binding="{Binding No}"                Width="50"   ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
                             <DataGridTextColumn Header="작업 날짜"              Binding="{Binding Date_Time}"         Width="180"  ElementStyle="{StaticResource CenterCell}" HeaderStyle="{StaticResource CenterHeader}"/>
@@ -322,16 +323,14 @@
                             </DataGridTextColumn>
                         </DataGrid.Columns>
                     </DataGrid>
-                </ScrollViewer>
             </TabItem>
 
             <!-- 양품 -->
             <TabItem Header="양품">
-                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                    <DataGrid Style="{StaticResource CommonGrid}"
-                              ItemsSource="{Binding UiDg_ResourceLotHisFinishedList, Mode=OneWay}"
-                              MinWidth="5700"
-                              ColumnHeaderStyle="{StaticResource CenterHeader}">
+                <DataGrid Style="{StaticResource CommonGrid}"
+                          ItemsSource="{Binding UiDg_ResourceLotHisFinishedList, Mode=OneWay}"
+                          MinWidth="5700"
+                          ColumnHeaderStyle="{StaticResource CenterHeader}">
                         <!-- 컬럼 정의는 전체 탭과 동일 — 공유 Style로 관리 권장 (Step 6 이후 리팩토링) -->
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="번호"       Binding="{Binding No}"                Width="50"  ElementStyle="{StaticResource CenterCell}"/>
@@ -342,16 +341,14 @@
                             <DataGridTextColumn Header="종합판정"    Binding="{Binding TotalJudge}"        Width="80"  ElementStyle="{StaticResource CenterCell}"/>
                         </DataGrid.Columns>
                     </DataGrid>
-                </ScrollViewer>
             </TabItem>
 
             <!-- 불량 -->
             <TabItem Header="불량">
-                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                    <DataGrid Style="{StaticResource CommonGrid}"
-                              ItemsSource="{Binding UiDg_ResourceLotHisDefectiveList, Mode=OneWay}"
-                              MinWidth="5700"
-                              ColumnHeaderStyle="{StaticResource CenterHeader}">
+                <DataGrid Style="{StaticResource CommonGrid}"
+                          ItemsSource="{Binding UiDg_ResourceLotHisDefectiveList, Mode=OneWay}"
+                          MinWidth="5700"
+                          ColumnHeaderStyle="{StaticResource CenterHeader}">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="번호"       Binding="{Binding No}"                Width="50"  ElementStyle="{StaticResource CenterCell}"/>
                             <DataGridTextColumn Header="작업 날짜"   Binding="{Binding Date_Time}"         Width="180" ElementStyle="{StaticResource CenterCell}"/>
@@ -371,9 +368,52 @@
                             </DataGridTextColumn>
                         </DataGrid.Columns>
                     </DataGrid>
-                </ScrollViewer>
             </TabItem>
 
         </TabControl>
+
+        <!-- ── 구분선 (드래그로 로그 높이 조절) ──────────────────────────────── -->
+        <GridSplitter Grid.Row="2"
+                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                      Background="#CCCCCC" Cursor="SizeNS"/>
+
+        <!-- ── 조회 로그 ──────────────────────────────────────────────────────── -->
+        <Border Grid.Row="3" Margin="5 0 5 5" Background="#1E1E1E" CornerRadius="4">
+            <DockPanel>
+
+                <!-- 헤더 -->
+                <DockPanel DockPanel.Dock="Top" Background="#2D2D2D" Height="24">
+                    <Button DockPanel.Dock="Right"
+                            Command="{Binding Cmd_ClearLog}"
+                            Content="지우기"
+                            Padding="10 0" Margin="3 2"
+                            FontSize="11" Background="#555555" Foreground="White"
+                            BorderThickness="0" Cursor="Hand"/>
+                    <TextBlock Text="조회 로그"
+                               VerticalAlignment="Center" Margin="8 0"
+                               FontSize="11" FontWeight="SemiBold" Foreground="#AAAAAA"/>
+                </DockPanel>
+
+                <!-- 로그 목록 -->
+                <ListBox ItemsSource="{Binding QueryLog}"
+                         Background="#1E1E1E" BorderThickness="0"
+                         FontFamily="Consolas" FontSize="11" Foreground="#D4D4D4"
+                         VirtualizingPanel.IsVirtualizing="True"
+                         VirtualizingPanel.VirtualizationMode="Recycling"
+                         ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding"           Value="6 1"/>
+                            <Setter Property="Background"        Value="Transparent"/>
+                            <Setter Property="BorderThickness"   Value="0"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                </ListBox>
+
+            </DockPanel>
+        </Border>
+
     </Grid>
 </UserControl>

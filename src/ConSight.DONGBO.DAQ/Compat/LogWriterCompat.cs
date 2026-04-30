@@ -15,6 +15,7 @@ namespace Bi.nsLogWriter
         public void Write(LogLevel level, StringBuilder message) => Append($"[{level}] {message}");
         public void Write(LogLevel level, string message) => Append($"[{level}] {message}");
         public void WriteInformation(string message) => Append($"[INFO] {message}");
+        public void WriteWarning(string message) => Append($"[WARN] {message}");
         public void WriteException(Exception ex) => Append($"[ERR] {ex}");
         public void WriteExpException(Exception ex) => Append($"[EXP] {ex}");
 

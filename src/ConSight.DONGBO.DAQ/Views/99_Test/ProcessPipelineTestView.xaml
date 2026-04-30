@@ -1,0 +1,125 @@
+<UserControl x:Class="ConSight.DONGBO.DAQ.Views.ProcessPipelineTestView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="700" d:DesignWidth="1200">
+
+    <DockPanel Background="#F4F4F4">
+
+        <!-- ── 헤더 ──────────────────────────────────────────────────────── -->
+        <Border DockPanel.Dock="Top" Background="#2D3748" Padding="14,10">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="ControlUnit_DAQ  파이프라인 테스트"
+                           Foreground="White" FontSize="15" FontWeight="Bold"/>
+                <TextBlock Text="  |  PLC short[] 배열 → Parser → DTO → DB/CSV/EventBus"
+                           Foreground="#A0AEC0" FontSize="12" VerticalAlignment="Center" Margin="0,1,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ── 버튼 패널 ─────────────────────────────────────────────────── -->
+        <Border DockPanel.Dock="Top" Background="#EDF2F7" BorderBrush="#CBD5E0"
+                BorderThickness="0,0,0,1" Padding="14,10">
+            <StackPanel>
+
+                <!-- 섹션 1: 파서 테스트 -->
+                <TextBlock Text="① 파서 테스트 — DB 불필요 (short[] → Parser → DTO 필드 출력)"
+                           FontWeight="SemiBold" Foreground="#2D3748" Margin="0,0,0,6"/>
+                <WrapPanel>
+                    <Button x:Name="BtnParseOp200" Content="OP200 파서"
+                            Width="120" Height="30" Margin="0,0,8,0"
+                            Background="#3182CE" Foreground="White"
+                            Click="BtnParseOp200_Click"/>
+                    <Button x:Name="BtnParseOp210" Content="OP210 파서"
+                            Width="120" Height="30" Margin="0,0,8,0"
+                            Background="#3182CE" Foreground="White"
+                            Click="BtnParseOp210_Click"/>
+                    <Button x:Name="BtnParseOp220" Content="OP220 파서"
+                            Width="120" Height="30" Margin="0,0,8,0"
+                            Background="#3182CE" Foreground="White"
+                            Click="BtnParseOp220_Click"/>
+                    <Button x:Name="BtnParseOp230" Content="OP230 파서"
+                            Width="120" Height="30" Margin="0,0,24,0"
+                            Background="#3182CE" Foreground="White"
+                            Click="BtnParseOp230_Click"/>
+                    <Button x:Name="BtnClear" Content="결과 지우기"
+                            Width="90" Height="30"
+                            Background="#718096" Foreground="White"
+                            Click="BtnClear_Click"/>
+                </WrapPanel>
+
+                <Separator Margin="0,10,0,8" Background="#CBD5E0"/>
+
+                <!-- 섹션 2: 전체 파이프라인 -->
+                <TextBlock Text="② 전체 파이프라인 — DB 연결 필요 (Parser → ControlUnit_DAQ → DB INSERT/UPDATE + MockPLC 쓰기)"
+                           FontWeight="SemiBold" Foreground="#2D3748" Margin="0,0,0,6"/>
+                <WrapPanel>
+                    <Button x:Name="BtnPipeOp200" Content="OP200 파이프라인"
+                            Width="140" Height="30" Margin="0,0,8,0"
+                            Background="#276749" Foreground="White"
+                            Click="BtnPipeOp200_Click"/>
+                    <Button x:Name="BtnPipeOp210" Content="OP210 파이프라인"
+                            Width="140" Height="30" Margin="0,0,8,0"
+                            Background="#276749" Foreground="White"
+                            Click="BtnPipeOp210_Click"/>
+                    <Button x:Name="BtnPipeOp220" Content="OP220 파이프라인"
+                            Width="140" Height="30" Margin="0,0,8,0"
+                            Background="#276749" Foreground="White"
+                            Click="BtnPipeOp220_Click"/>
+                    <Button x:Name="BtnPipeOp230" Content="OP230 파이프라인"
+                            Width="140" Height="30" Margin="0,0,24,0"
+                            Background="#276749" Foreground="White"
+                            Click="BtnPipeOp230_Click"/>
+                    <TextBlock Text="※ OP200 먼저 실행 후 210→220→230 순서 권장"
+                               Foreground="#E53E3E" FontSize="11" VerticalAlignment="Center"/>
+                </WrapPanel>
+
+            </StackPanel>
+        </Border>
+
+        <!-- ── 결과 영역 ─────────────────────────────────────────────────── -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="340"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 좌: 파서/파이프라인 결과 -->
+            <DockPanel Grid.Column="0">
+                <Border DockPanel.Dock="Top" Background="#2D3748" Padding="8,4">
+                    <TextBlock Text="파서 / 파이프라인 결과" Foreground="White" FontSize="12"/>
+                </Border>
+                <TextBox x:Name="TxResult"
+                         IsReadOnly="True"
+                         FontFamily="Consolas" FontSize="12"
+                         Background="#1A202C" Foreground="#E2E8F0"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto"
+                         Padding="10"
+                         TextWrapping="NoWrap"/>
+            </DockPanel>
+
+            <!-- 스플리터 -->
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
+                          Background="#CBD5E0"/>
+
+            <!-- 우: MockPLC 쓰기 로그 -->
+            <DockPanel Grid.Column="2">
+                <Border DockPanel.Dock="Top" Background="#276749" Padding="8,4">
+                    <TextBlock Text="MockPLC 쓰기 로그 (D2001/D2201/D2301/D2401)"
+                               Foreground="White" FontSize="12"/>
+                </Border>
+                <TextBox x:Name="TxPlcLog"
+                         IsReadOnly="True"
+                         FontFamily="Consolas" FontSize="11"
+                         Background="#1C3A2E" Foreground="#9AE6B4"
+                         VerticalScrollBarVisibility="Auto"
+                         Padding="8"
+                         TextWrapping="NoWrap"/>
+            </DockPanel>
+        </Grid>
+
+    </DockPanel>
+</UserControl>

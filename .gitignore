@@ -1,0 +1,22 @@
+# Build artifacts
+**/bin/
+**/obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*_wpftmp.*
+
+# Obsidian
+.obsidian/
+
+# Logs & temp
+*.log
+*.tmp
+
+# SQL test output
+sql/archive_result.txt
+sql/mock_insert_empg.log

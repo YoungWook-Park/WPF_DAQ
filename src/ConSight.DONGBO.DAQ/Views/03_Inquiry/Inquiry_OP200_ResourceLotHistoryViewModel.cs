@@ -17,6 +17,7 @@ using Bi.nsExpException;
 using Bi.nsLogWriter;
 using System.Collections.ObjectModel;
 using System.Data;
+using System.Diagnostics;
 using System.Windows.Input;
 
 namespace ConSight.DAQ.Views
@@ -76,10 +77,11 @@ namespace ConSight.DAQ.Views
             set => SetProperty(ref _uiTBlock_GoodQualityRation, value);
         }
 
-        public ObservableCollection<ResourceLotHisItem> UiDg_ResourceLotHisList         { get; } = new();
-        public ObservableCollection<ResourceLotHisItem> UiDg_ResourceLotHisFinishedList  { get; } = new();
-        public ObservableCollection<ResourceLotHisItem> UiDg_ResourceLotHisDefectiveList { get; } = new();
+        public ObservableRangeCollection<ResourceLotHisItem> UiDg_ResourceLotHisList         { get; } = new();
+        public ObservableRangeCollection<ResourceLotHisItem> UiDg_ResourceLotHisFinishedList  { get; } = new();
+        public ObservableRangeCollection<ResourceLotHisItem> UiDg_ResourceLotHisDefectiveList { get; } = new();
         public ObservableCollection<string>             UiCBox_ModelItemSource           { get; } = new();
+        public ObservableCollection<string>             QueryLog                         { get; } = new();
 
         private string _uiCBox_ModelSelectedItem = string.Empty;
         public string UiCBox_ModelSelectedItem
@@ -105,7 +107,11 @@ namespace ConSight.DAQ.Views
 
         private ICommand? _cmdFind;
         public ICommand Cmd_Find =>
-            _cmdFind ??= new BiRelayCommand(PerformFind);
+            _cmdFind ??= new BiRelayCommand(async _ => await PerformFindAsync());
+
+        private ICommand? _cmdClearLog;
+        public ICommand Cmd_ClearLog =>
+            _cmdClearLog ??= new BiRelayCommand(_ => QueryLog.Clear());
 
         #endregion
 
@@ -133,7 +139,7 @@ namespace ConSight.DAQ.Views
             }
         }
 
-        private void PerformFind(object? _)
+        private async Task PerformFindAsync()
         {
             try
             {
@@ -148,54 +154,78 @@ namespace ConSight.DAQ.Views
                     return;
                 }
 
-                bool hasModel = !string.IsNullOrEmpty(UiCBox_ModelSelectedItem);
+                bool hasModel  = !string.IsNullOrEmpty(UiCBox_ModelSelectedItem);
+                var  startDate = UiDate_ProcStartDate.Value;
+                var  endDate   = UiDate_ProcEndDate.Value;
+                bool needHis   = startDate < DateTime.Now.AddMonths(-6);
+                string model   = UiCBox_ModelSelectedItem;
 
-                // ── 최근 데이터 (EMPG) ──────────────────────────────────────────────
-                DataSet dsRecent = QueryEmpg("EMPG", hasModel);
+                var swTotal = Stopwatch.StartNew();
+                long dbMs = 0, mapMs = 0;
 
-                // ── 6개월 이전 데이터 (EMPG_HIS) ────────────────────────────────────
-                DataSet? dsOld = null;
-                if (UiDate_ProcStartDate < DateTime.Now.AddMonths(-6))
-                    dsOld = QueryEmpg("EMPG_HIS", hasModel);   // nullable < DateTime is false when null — already guarded above
+                // ── DB 조회 + 매핑: 백그라운드 스레드 (UI Freeze 방지) ──────────────
+                // DataSet/DataRow 이중 버퍼 제거: SqlDataReader로 직접 매핑 (메모리 ~50% 절감)
+                var (all, finished, defective) = await Task.Run(() =>
+                {
+                    var swDb = Stopwatch.StartNew();
+                    var recentList = QueryEmpg("EMPG",     hasModel, startDate, endDate, model);
+                    var oldList    = needHis
+                        ? QueryEmpg("EMPG_HIS", hasModel, startDate, endDate, model)
+                        : new List<ResourceLotHisItem>();
+                    dbMs = swDb.ElapsedMilliseconds;
 
-                // ── 결과 없음 처리 ───────────────────────────────────────────────────
-                bool recentEmpty = dsRecent.Tables[0].Rows.Count == 0;
-                bool oldEmpty    = dsOld == null || dsOld.Tables[0].Rows.Count == 0;
-                if (recentEmpty && oldEmpty)
+                    if (recentList.Count == 0 && oldList.Count == 0)
+                        return (new List<ResourceLotHisItem>(),
+                                new List<ResourceLotHisItem>(),
+                                new List<ResourceLotHisItem>());
+
+                    swDb.Restart();
+                    var allList = new List<ResourceLotHisItem>(oldList.Count + recentList.Count);
+                    allList.AddRange(oldList);
+                    allList.AddRange(recentList);
+
+                    var okList = new List<ResourceLotHisItem>();
+                    var ngList = new List<ResourceLotHisItem>();
+                    for (int i = 0; i < allList.Count; i++)
+                    {
+                        allList[i].No = i + 1;
+                        if (allList[i].TotalJudge == MxComp_DB_JUDGE_CODE.OK) okList.Add(allList[i]);
+                        else                                                    ngList.Add(allList[i]);
+                    }
+                    mapMs = swDb.ElapsedMilliseconds;
+                    return (allList, okList, ngList);
+                });
+
+                // ── UI 업데이트: UI 스레드, 컬렉션 교체(알림 1회) ────────────────────
+                if (all.Count == 0)
                 {
                     ClearCollections();
+                    AppendLog($"[{DateTime.Now:HH:mm:ss.fff}]  결과없음  DB:{dbMs}ms  {startDate:MM-dd}~{endDate:MM-dd}");
                     ExpException.RaiseException(new Exception("조회된 데이터가 없습니다."));
+                    return;
                 }
 
-                // ── 매핑 ────────────────────────────────────────────────────────────
-                var all       = new List<ResourceLotHisItem>();
-                var finished  = new List<ResourceLotHisItem>();
-                var defective = new List<ResourceLotHisItem>();
-                int idx = 1;
+                var swUi = Stopwatch.StartNew();
+                UiDg_ResourceLotHisList.ReplaceAll(all);
+                UiDg_ResourceLotHisFinishedList.ReplaceAll(finished);
+                UiDg_ResourceLotHisDefectiveList.ReplaceAll(defective);
+                swUi.Stop();
 
-                foreach (DataSet? ds in new[] { dsOld, dsRecent })
-                {
-                    if (ds == null) continue;
-                    foreach (DataRow dr in ds.Tables[0].Rows)
-                    {
-                        var item = MapRow(dr, idx++);
-                        all.Add(item);
-                        if (item.TotalJudge == MxComp_DB_JUDGE_CODE.OK) finished.Add(item);
-                        else                                              defective.Add(item);
-                    }
-                }
-
-                // ── ObservableCollection 교체 ────────────────────────────────────
-                Repopulate(UiDg_ResourceLotHisList,         all);
-                Repopulate(UiDg_ResourceLotHisFinishedList,  finished);
-                Repopulate(UiDg_ResourceLotHisDefectiveList, defective);
-
-                UiTBlock_ProductionQty  = all.Count;
-                UiTBlock_GoodsQty       = finished.Count;
-                UiTBlock_DefectiveQty   = defective.Count;
+                UiTBlock_ProductionQty     = all.Count;
+                UiTBlock_GoodsQty          = finished.Count;
+                UiTBlock_DefectiveQty      = defective.Count;
                 UiTBlock_GoodQualityRation = all.Count == 0
                     ? "0.00"
                     : (finished.Count * 100.0 / all.Count).ToString("0.00");
+
+                swTotal.Stop();
+                AppendLog(
+                    $"[{DateTime.Now:HH:mm:ss.fff}]" +
+                    $"  {startDate:yyyy-MM-dd}~{endDate:MM-dd}" +
+                    (hasModel ? $"  [{model}]" : "") +
+                    $"  DB:{dbMs}ms  매핑:{mapMs}ms  UI:{swUi.ElapsedMilliseconds}ms" +
+                    $"  합계:{swTotal.ElapsedMilliseconds}ms" +
+                    $"  {all.Count:N0}건 (양:{finished.Count:N0} / 불:{defective.Count:N0})");
             }
             catch (ExpException expEx) { _log.WriteExpException(expEx); }
             catch (Exception ex)       { _log.WriteException(ex); }
@@ -207,7 +237,7 @@ namespace ConSight.DAQ.Views
         //        (문자열 직접 삽입 → SQL Injection 가능)
         // TO-BE: WHERE UPDATE_TIME BETWEEN @sDate AND @eDate
         //        (파라미터화 → 타입 안전, Injection 불가)
-        private DataSet QueryEmpg(string table, bool hasModel)
+        private List<ResourceLotHisItem> QueryEmpg(string table, bool hasModel, DateTime startDate, DateTime endDate, string model)
         {
             var qExe = new QueryExecution(_connectionString);
             string sql = BuildSelectCols() +
@@ -216,11 +246,11 @@ namespace ConSight.DAQ.Views
                 (hasModel ? "AND MODEL = @model " : "") +
                 "ORDER BY UPDATE_TIME";
             qExe.AppendQuery(sql);
-            qExe.AddParameter("@sDate", UiDate_ProcStartDate!.Value);   // null already guarded in PerformFind
-            qExe.AddParameter("@eDate", UiDate_ProcEndDate!.Value);
+            qExe.AddParameter("@sDate", startDate);
+            qExe.AddParameter("@eDate", endDate);
             if (hasModel)
-                qExe.AddParameter("@model", UiCBox_ModelSelectedItem);
-            return qExe.Execute();
+                qExe.AddParameter("@model", model);
+            return qExe.ExecuteReader(MapRow);
         }
 
         private static string BuildSelectCols() =>
@@ -269,79 +299,78 @@ namespace ConSight.DAQ.Views
             " ISNULL(A.SP49,'') SP49, ISNULL(A.SP50,'') SP50";
 
         // UPDATE_TIME는 Step 1에서 nvarchar → datetime 타입 변경됨.
-        // AS-IS: (string)dr["UPDATE_TIME"]  → InvalidCastException
-        // TO-BE: ((DateTime)dr["UPDATE_TIME"]).ToString(...)
-        private static ResourceLotHisItem MapRow(DataRow dr, int index) => new ResourceLotHisItem
+        // AS-IS: DataRow(DataSet 경유, 이중 버퍼) → TO-BE: IDataRecord(SqlDataReader 직접 매핑)
+        // No는 PerformFindAsync에서 old+recent 합산 후 일괄 부여.
+        private static ResourceLotHisItem MapRow(IDataRecord r) => new ResourceLotHisItem
         {
-            No                = index,
-            Date_Time         = ((DateTime)dr["UPDATE_TIME"]).ToString("yyyy-MM-dd HH:mm:ss.fff"),
-            Repair            = dr["REPAIR"].ToString()!,
-            Model             = dr["MODEL"].ToString()!,
-            Material01_Serial = dr["MAT_SERIAL01"].ToString()!,
-            Material02_Serial = dr["MAT_SERIAL02"].ToString()!,
-            TotalJudge        = dr["TOTAL_JUDGE"].ToString()!,
+            Date_Time         = ((DateTime)r["UPDATE_TIME"]).ToString("yyyy-MM-dd HH:mm:ss.fff"),
+            Repair            = r["REPAIR"].ToString()!,
+            Model             = r["MODEL"].ToString()!,
+            Material01_Serial = r["MAT_SERIAL01"].ToString()!,
+            Material02_Serial = r["MAT_SERIAL02"].ToString()!,
+            TotalJudge        = r["TOTAL_JUDGE"].ToString()!,
 
-            APD01 = dr["GR_R1_Load"].ToString()!,       APD02 = dr["GR_R1_Stroke"].ToString()!,
-            APD03 = dr["GR_R2_Load"].ToString()!,       APD04 = dr["GR_R2_Stroke"].ToString()!,
-            APD05 = dr["GR_P_Load"].ToString()!,        APD06 = dr["GR_P_Stroke"].ToString()!,
-            APD07 = dr["GR_Judge"].ToString()!,         APD08 = dr["GR_IndexNo"].ToString()!,
-            APD09 = dr["BR_R1_Load"].ToString()!,       APD10 = dr["BR_R1_Stroke"].ToString()!,
-            APD11 = dr["BR_R2_Load"].ToString()!,       APD12 = dr["BR_R2_Stroke"].ToString()!,
-            APD13 = dr["BR_P_Load"].ToString()!,        APD14 = dr["BR_P_Stroke"].ToString()!,
-            APD15 = dr["BR_Judge"].ToString()!,         APD16 = dr["BR_IndexNo"].ToString()!,
-            APD17 = dr["SR_GrooveWith_0Deg"].ToString()!,
-            APD18 = dr["SR_GrooveWith_180Deg"].ToString()!,
-            APD19 = dr["SR_GrooveWith_Grade_Data"].ToString()!,
-            APD20 = dr["SR_GrooveWith_Grade"].ToString()!,
-            APD21 = dr["SR_GrooveWith_Judge"].ToString()!,
-            APD22 = dr["SR_Heigh_Thick"].ToString()!,  APD23 = dr["SR_Heigh_Judge"].ToString()!,
-            APD24 = dr["SR_Judge"].ToString()!,
-            APD25 = dr["EndPlate_Data"].ToString()!,   APD26 = dr["EndPlate_Judge"].ToString()!,
-            APD27 = dr["RunOutCheck_Input"].ToString()!,
-            APD28 = dr["RunOutCheck_Input_Judgement"].ToString()!,
-            APD29 = dr["RunOutCheck_Space"].ToString()!,
-            APD30 = dr["RunOutCheck_Space_Judgement"].ToString()!,
-            APD31 = dr["GuidingPressFitting_Judgement"].ToString()!,
-            APD32 = dr["Guiding_ShortDistance_Check"].ToString()!,
-            APD33 = dr["Guiding_ShortDistance_Judgement"].ToString()!,
-            APD34 = dr["Lotite_Disp_Judge"].ToString()!,
-            APD35 = dr["Lotite_Vision_Judge"].ToString()!,
-            APD36 = dr["SOCP_R1_Load"].ToString()!,    APD37 = dr["SOCP_R1_Stroke"].ToString()!,
-            APD38 = dr["SOCP_R2_Load"].ToString()!,    APD39 = dr["SOCP_R2_Stroke"].ToString()!,
-            APD40 = dr["SOCP_P_Load"].ToString()!,     APD41 = dr["SOCP_P_Stroke"].ToString()!,
-            APD42 = dr["SOCP_Judge"].ToString()!,
-            APD43 = dr["SOC_Check"].ToString()!,       APD44 = dr["SOC_Check_Judge"].ToString()!,
+            APD01 = r["GR_R1_Load"].ToString()!,       APD02 = r["GR_R1_Stroke"].ToString()!,
+            APD03 = r["GR_R2_Load"].ToString()!,       APD04 = r["GR_R2_Stroke"].ToString()!,
+            APD05 = r["GR_P_Load"].ToString()!,        APD06 = r["GR_P_Stroke"].ToString()!,
+            APD07 = r["GR_Judge"].ToString()!,         APD08 = r["GR_IndexNo"].ToString()!,
+            APD09 = r["BR_R1_Load"].ToString()!,       APD10 = r["BR_R1_Stroke"].ToString()!,
+            APD11 = r["BR_R2_Load"].ToString()!,       APD12 = r["BR_R2_Stroke"].ToString()!,
+            APD13 = r["BR_P_Load"].ToString()!,        APD14 = r["BR_P_Stroke"].ToString()!,
+            APD15 = r["BR_Judge"].ToString()!,         APD16 = r["BR_IndexNo"].ToString()!,
+            APD17 = r["SR_GrooveWith_0Deg"].ToString()!,
+            APD18 = r["SR_GrooveWith_180Deg"].ToString()!,
+            APD19 = r["SR_GrooveWith_Grade_Data"].ToString()!,
+            APD20 = r["SR_GrooveWith_Grade"].ToString()!,
+            APD21 = r["SR_GrooveWith_Judge"].ToString()!,
+            APD22 = r["SR_Heigh_Thick"].ToString()!,  APD23 = r["SR_Heigh_Judge"].ToString()!,
+            APD24 = r["SR_Judge"].ToString()!,
+            APD25 = r["EndPlate_Data"].ToString()!,   APD26 = r["EndPlate_Judge"].ToString()!,
+            APD27 = r["RunOutCheck_Input"].ToString()!,
+            APD28 = r["RunOutCheck_Input_Judgement"].ToString()!,
+            APD29 = r["RunOutCheck_Space"].ToString()!,
+            APD30 = r["RunOutCheck_Space_Judgement"].ToString()!,
+            APD31 = r["GuidingPressFitting_Judgement"].ToString()!,
+            APD32 = r["Guiding_ShortDistance_Check"].ToString()!,
+            APD33 = r["Guiding_ShortDistance_Judgement"].ToString()!,
+            APD34 = r["Lotite_Disp_Judge"].ToString()!,
+            APD35 = r["Lotite_Vision_Judge"].ToString()!,
+            APD36 = r["SOCP_R1_Load"].ToString()!,    APD37 = r["SOCP_R1_Stroke"].ToString()!,
+            APD38 = r["SOCP_R2_Load"].ToString()!,    APD39 = r["SOCP_R2_Stroke"].ToString()!,
+            APD40 = r["SOCP_P_Load"].ToString()!,     APD41 = r["SOCP_P_Stroke"].ToString()!,
+            APD42 = r["SOCP_Judge"].ToString()!,
+            APD43 = r["SOC_Check"].ToString()!,       APD44 = r["SOC_Check_Judge"].ToString()!,
 
-            SP01 = dr["SP01"].ToString()!, SP02 = dr["SP02"].ToString()!, SP03 = dr["SP03"].ToString()!,
-            SP04 = dr["SP04"].ToString()!, SP05 = dr["SP05"].ToString()!, SP06 = dr["SP06"].ToString()!,
-            SP07 = dr["SP07"].ToString()!, SP08 = dr["SP08"].ToString()!, SP09 = dr["SP09"].ToString()!,
-            SP10 = dr["SP10"].ToString()!, SP11 = dr["SP11"].ToString()!, SP12 = dr["SP12"].ToString()!,
-            SP13 = dr["SP13"].ToString()!, SP14 = dr["SP14"].ToString()!, SP15 = dr["SP15"].ToString()!,
-            SP16 = dr["SP16"].ToString()!, SP17 = dr["SP17"].ToString()!, SP18 = dr["SP18"].ToString()!,
-            SP19 = dr["SP19"].ToString()!, SP20 = dr["SP20"].ToString()!, SP21 = dr["SP21"].ToString()!,
-            SP22 = dr["SP22"].ToString()!, SP23 = dr["SP23"].ToString()!, SP24 = dr["SP24"].ToString()!,
-            SP25 = dr["SP25"].ToString()!, SP26 = dr["SP26"].ToString()!, SP27 = dr["SP27"].ToString()!,
-            SP28 = dr["SP28"].ToString()!, SP29 = dr["SP29"].ToString()!, SP30 = dr["SP30"].ToString()!,
-            SP31 = dr["SP31"].ToString()!, SP32 = dr["SP32"].ToString()!, SP33 = dr["SP33"].ToString()!,
-            SP34 = dr["SP34"].ToString()!, SP35 = dr["SP35"].ToString()!, SP36 = dr["SP36"].ToString()!,
-            SP37 = dr["SP37"].ToString()!, SP38 = dr["SP38"].ToString()!, SP39 = dr["SP39"].ToString()!,
-            SP40 = dr["SP40"].ToString()!, SP41 = dr["SP41"].ToString()!, SP42 = dr["SP42"].ToString()!,
-            SP43 = dr["SP43"].ToString()!, SP44 = dr["SP44"].ToString()!, SP45 = dr["SP45"].ToString()!,
-            SP46 = dr["SP46"].ToString()!, SP47 = dr["SP47"].ToString()!, SP48 = dr["SP48"].ToString()!,
-            SP49 = dr["SP49"].ToString()!, SP50 = dr["SP50"].ToString()!,
+            SP01 = r["SP01"].ToString()!, SP02 = r["SP02"].ToString()!, SP03 = r["SP03"].ToString()!,
+            SP04 = r["SP04"].ToString()!, SP05 = r["SP05"].ToString()!, SP06 = r["SP06"].ToString()!,
+            SP07 = r["SP07"].ToString()!, SP08 = r["SP08"].ToString()!, SP09 = r["SP09"].ToString()!,
+            SP10 = r["SP10"].ToString()!, SP11 = r["SP11"].ToString()!, SP12 = r["SP12"].ToString()!,
+            SP13 = r["SP13"].ToString()!, SP14 = r["SP14"].ToString()!, SP15 = r["SP15"].ToString()!,
+            SP16 = r["SP16"].ToString()!, SP17 = r["SP17"].ToString()!, SP18 = r["SP18"].ToString()!,
+            SP19 = r["SP19"].ToString()!, SP20 = r["SP20"].ToString()!, SP21 = r["SP21"].ToString()!,
+            SP22 = r["SP22"].ToString()!, SP23 = r["SP23"].ToString()!, SP24 = r["SP24"].ToString()!,
+            SP25 = r["SP25"].ToString()!, SP26 = r["SP26"].ToString()!, SP27 = r["SP27"].ToString()!,
+            SP28 = r["SP28"].ToString()!, SP29 = r["SP29"].ToString()!, SP30 = r["SP30"].ToString()!,
+            SP31 = r["SP31"].ToString()!, SP32 = r["SP32"].ToString()!, SP33 = r["SP33"].ToString()!,
+            SP34 = r["SP34"].ToString()!, SP35 = r["SP35"].ToString()!, SP36 = r["SP36"].ToString()!,
+            SP37 = r["SP37"].ToString()!, SP38 = r["SP38"].ToString()!, SP39 = r["SP39"].ToString()!,
+            SP40 = r["SP40"].ToString()!, SP41 = r["SP41"].ToString()!, SP42 = r["SP42"].ToString()!,
+            SP43 = r["SP43"].ToString()!, SP44 = r["SP44"].ToString()!, SP45 = r["SP45"].ToString()!,
+            SP46 = r["SP46"].ToString()!, SP47 = r["SP47"].ToString()!, SP48 = r["SP48"].ToString()!,
+            SP49 = r["SP49"].ToString()!, SP50 = r["SP50"].ToString()!,
         };
-
-        private static void Repopulate<T>(ObservableCollection<T> collection, IEnumerable<T> items)
-        {
-            collection.Clear();
-            foreach (var item in items) collection.Add(item);
-        }
 
         private void ClearCollections()
         {
-            UiDg_ResourceLotHisList.Clear();
-            UiDg_ResourceLotHisFinishedList.Clear();
-            UiDg_ResourceLotHisDefectiveList.Clear();
+            UiDg_ResourceLotHisList.ReplaceAll([]);
+            UiDg_ResourceLotHisFinishedList.ReplaceAll([]);
+            UiDg_ResourceLotHisDefectiveList.ReplaceAll([]);
+        }
+
+        private void AppendLog(string entry)
+        {
+            if (QueryLog.Count >= 200) QueryLog.RemoveAt(QueryLog.Count - 1);
+            QueryLog.Insert(0, entry);
         }
 
         #endregion

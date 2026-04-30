@@ -49,13 +49,3 @@ namespace Bi.ConSight_MxComponent.Data
     }
 }
 
-namespace Bi.ConSight_MxComponent
-{
-    // Step 6에서 IPlcDriver Mock으로 교체 예정 — 현재는 빈 스텁
-    public static class MxComp_DB_JUDGE_CODE
-    {
-        public const string OK   = "OK";
-        public const string NG   = "NG";
-        public const string PASS = "PASS";
-    }
-}

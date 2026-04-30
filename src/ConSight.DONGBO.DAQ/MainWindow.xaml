@@ -3,10 +3,69 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:ConSight.DONGBO.DAQ"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        Title="ConSight DONG_BO DAQ — 리팩토링 포트폴리오"
+        Height="900" Width="1440"
+        WindowStartupLocation="CenterScreen">
 
-    </Grid>
+    <DockPanel>
+        <!-- ── 상단 정보 바 ─────────────────────────────────────────────────── -->
+        <Border DockPanel.Dock="Top" Background="#2D2D2D" Height="32">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10 0">
+                <TextBlock Text="DB: .\SQLEXPRESS / DB_eM" Foreground="#AAAAAA" FontSize="12" VerticalAlignment="Center"/>
+                <TextBlock Text=" | " Foreground="#555555" VerticalAlignment="Center"/>
+                <TextBlock Text="EMPG 500,022건 / EMPG_HIS 500,000건" Foreground="#AAAAAA" FontSize="12" VerticalAlignment="Center"/>
+                <TextBlock Text=" | " Foreground="#555555" VerticalAlignment="Center"/>
+                <TextBlock x:Name="TxStatus" Text="준비" Foreground="#00CC66" FontSize="12" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ── 하단 상태 바 ─────────────────────────────────────────────────── -->
+        <Border DockPanel.Dock="Bottom" Background="#1E1E1E" Height="24">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10 0">
+                <TextBlock Text="마지막 조회 (EF Core): " Foreground="#888888" FontSize="11"/>
+                <TextBlock x:Name="TxEfElapsed" Text="—" Foreground="#00AAFF" FontSize="11"/>
+                <TextBlock Text=" ms" Foreground="#888888" FontSize="11"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ── 탭: ADO.NET / EF Core ────────────────────────────────────────── -->
+        <TabControl x:Name="MainTab" Background="#F0F0F0">
+
+            <!-- ADO.NET 탭 -->
+            <TabItem x:Name="TabAdo">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="ADO.NET" FontWeight="Bold" FontSize="13"/>
+                        <TextBlock Text=" (기존)" Foreground="Gray" FontSize="11" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+                <!-- x:Name으로 참조해 코드비하인드에서 추가 -->
+                <ContentControl x:Name="AdoViewHost"/>
+            </TabItem>
+
+            <!-- EF Core 탭 -->
+            <TabItem x:Name="TabEf">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="EF Core" FontWeight="Bold" FontSize="13" Foreground="#0066CC"/>
+                        <TextBlock Text=" (신규)" Foreground="Gray" FontSize="11" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+                <ContentControl x:Name="EfViewHost"/>
+            </TabItem>
+
+            <!-- 파이프라인 테스트 탭 -->
+            <TabItem x:Name="TabTest">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Pipeline Test" FontWeight="Bold" FontSize="13" Foreground="#276749"/>
+                        <TextBlock Text=" (OP200~230)" Foreground="Gray" FontSize="11" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+                <ContentControl x:Name="TestViewHost"/>
+            </TabItem>
+
+        </TabControl>
+    </DockPanel>
 </Window>

@@ -9,6 +9,7 @@
 //   TimeTrigger       →  1초 딜레이 후 리셋 펄스 신호 생성
 
 using ConSight.DAQ.Data;
+using ConSight.DAQ.Device.PLC;
 
 namespace ConSight.DAQ.Device.PLC.OP200
 {
@@ -22,7 +23,7 @@ namespace ConSight.DAQ.Device.PLC.OP200
     //
     // ─────────────────────────────────────────────────────────────────────
 
-    public sealed class Op200WriteRegion : PlcWordRegionBase
+    public sealed class Op200WriteRegion : PlcWordRegionBase, IPlcWriteRegion
     {
         // ── 워드 위치 ────────────────────────────────────────────────────
 
@@ -88,7 +89,7 @@ namespace ConSight.DAQ.Device.PLC.OP200
         public void EnqueueTimeTrigger(Write_TimeTriggerDataArgs args) =>
             TimeTrigger.Enqueue(args);
 
-        internal Write_TimeTriggerDataArgs? DequeueTimeTrigger() =>
+        public Write_TimeTriggerDataArgs? DequeueTimeTrigger() =>
             TimeTrigger.Dequeue();
     }
 }
