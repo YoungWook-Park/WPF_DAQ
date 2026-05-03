@@ -34,14 +34,20 @@ namespace Bi.ConSight.SqlAgent
         {
             if (_queryList.Count == 0)
                 throw new InvalidOperationException("AddParameter 전에 AppendQuery를 호출하세요.");
-            _queryList[^1].Parameters.Add(new SqlParameter(name, value ?? DBNull.Value));
+            // DateTime을 object로 전달하면 SqlDbType.DateTime으로 추론됨.
+            // DB 컬럼이 datetime2인 경우 타입 불일치로 암묵적 변환 → 인덱스 미사용.
+            // DateTime 값은 명시적으로 DateTime2 타입으로 지정한다.
+            SqlParameter param = value is DateTime dt
+                ? new SqlParameter(name, SqlDbType.DateTime2) { Value = dt }
+                : new SqlParameter(name, value ?? DBNull.Value);
+            _queryList[^1].Parameters.Add(param);
         }
 
         /// <summary>
         /// SqlDataReader로 스트리밍 읽기: DataSet/DataRow 중간 버퍼 없이 mapper로 직접 변환.
         /// DataSet.Fill 대비 메모리 사용 약 50% 감소 (DataRow 이중 버퍼·row state 제거).
         /// </summary>
-        public List<T> ExecuteReader<T>(Func<IDataRecord, T> mapper)
+        public List<T> ExecuteReader<T>(Func<IDataRecord, T> mapper, int timeoutSeconds = 300)
         {
             var result = new List<T>();
             using var conn = SqlConnectionFactory.CreateConnection(_connectionString);
@@ -49,6 +55,7 @@ namespace Bi.ConSight.SqlAgent
             foreach (var (query, parameters) in _queryList)
             {
                 using var cmd = new SqlCommand(query.ToString(), conn);
+                cmd.CommandTimeout = timeoutSeconds;
                 if (parameters.Count > 0)
                     cmd.Parameters.AddRange(parameters.ToArray());
                 using var reader = cmd.ExecuteReader();
