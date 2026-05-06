@@ -1,4 +1,4 @@
-# WPF DAQ — ConSight DONGBO 리팩토링 포트폴리오
+# WPF DAQ — ConSight DAQ 리팩토링 포트폴리오
 
 > **목적**: 3,800줄 단일 `ControlUnit_DAQ` 클래스를 타입 안전하고 테스트 가능한 아키텍처로 분해한 리팩토링 기록
 
