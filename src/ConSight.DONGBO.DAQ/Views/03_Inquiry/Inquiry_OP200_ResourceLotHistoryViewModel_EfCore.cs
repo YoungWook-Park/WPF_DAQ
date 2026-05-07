@@ -14,6 +14,7 @@
 // 성능 측정 포인트:
 //   Stopwatch.StartNew() → QueryEmpgAsync() 완료 → ElapsedMs 기록
 //   → benchmark/phase3_efcore.md 에 결과 기입
+//FeatureA Edit
 
 using Bi.ConSightCommon;
 using Bi.nsExpException;

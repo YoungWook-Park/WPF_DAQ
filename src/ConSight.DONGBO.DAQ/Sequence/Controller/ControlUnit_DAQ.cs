@@ -71,10 +71,15 @@ namespace ConSight.DAQ.Sequence
 
         internal void ProcessData_Op200(Op200ProcessDto dto)
         {
+            //FeatureA Edit
+
             var sw = Stopwatch.StartNew();
+            //FeatureA Edit
             try
             {
                 var ssms200 = new SSMS_Op200(_connectionString);
+                //FeatureA Edit
+                //FeatureA Edit
 
                 // ShaftSerial → GearSerial 순으로 기존 행 조회
                 var existing = ssms200.FindBySerial(dto.ShaftSerial);
