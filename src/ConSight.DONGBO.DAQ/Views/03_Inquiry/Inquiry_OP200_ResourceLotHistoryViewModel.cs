@@ -246,6 +246,7 @@ namespace ConSight.DAQ.Views
                 (hasModel ? "AND MODEL = @model " : "") +
                 "ORDER BY UPDATE_TIME";
             qExe.AppendQuery(sql);
+            // UPDATE_TIME은 datetime2 — DateTime 파라미터로 전달 (AddParameter가 DateTime2로 매핑)
             qExe.AddParameter("@sDate", startDate);
             qExe.AddParameter("@eDate", endDate);
             if (hasModel)
