@@ -9,6 +9,7 @@
 //   - BuildQuery() 헬퍼 — SELECT 컬럼 목록 4회 중복 제거
 //   - ObservableCollection<T>  (ObservableRangeCollection 제거)
 //   - MainCore 의존 제거 → connectionString DI
+//FeatureB Edit
 
 using Bi.ConSight.SqlAgent;
 using Bi.ConSightCommon;
