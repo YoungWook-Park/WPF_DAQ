@@ -10,6 +10,7 @@
 //   4. DataBackUp_ResultSet     : IPlcWriteRegion 파라미터로 일반화
 //   5. EmpgCsvWriter            : 모든 공정 완료 후 동일 Write 호출
 
+using System.Diagnostics;
 using Bi.nsExpException;
 using Bi.nsLogWriter;
 using ConSight.DAQ.AppEvent;
@@ -60,14 +61,48 @@ namespace ConSight.DAQ.Sequence
         // ── OP200 : 메인 공정 ─────────────────────────────────────────────
         //
         // 파이프라인:
-        //   Op200ProcessDto → EmpgRow.From() → SSMS_Op200.Insert() → CsvWriter.Append()
-        //   → STS_MODEL_TB 갱신 → DataBackUp_ResultSet(_op200Write)
+        //   FindBySerial(ShaftSerial) → 없으면 FindBySerial(GearSerial)
+        //     found  : row.ApplyOp200(dto) → UpdateOp200Cols(row)
+        //     missing: EmpgRow.From(dto)   → Insert(row)
+        //   → STS_MODEL_TB 갱신 → CsvWriter.Append → DataBackUp_ResultSet
+        //
+        // Stopwatch 로 FindBySerial I/O 포함 전체 경과시간을 측정한다.
+        // 인덱스 도입 전후 로그에서 경과시간을 비교하면 된다.
 
         internal void ProcessData_Op200(Op200ProcessDto dto)
         {
+            //FeatureA Edit
+
+            var sw = Stopwatch.StartNew();
+            //FeatureA Edit
             try
             {
-                var row = EmpgRow.From(dto);
+                var ssms200 = new SSMS_Op200(_connectionString);
+                //FeatureB Edit
+                //FeatureA Edit
+                //FeatureA Edit
+
+                // ShaftSerial → GearSerial 순으로 기존 행 조회
+                var existing = ssms200.FindBySerial(dto.ShaftSerial);
+                if (existing == null && !string.IsNullOrEmpty(dto.GearSerial))
+                    existing = ssms200.FindBySerial(dto.GearSerial);
+
+                EmpgRow row;
+                if (existing != null)
+                {
+                    existing.ApplyOp200(dto);
+                    ssms200.UpdateOp200Cols(existing);
+                    row = existing;
+                    _log.WriteInformation(
+                        $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] OP200 UPDATE  Serial={dto.ShaftSerial}  판정={dto.TotalJudge}");
+                }
+                else
+                {
+                    row = EmpgRow.From(dto);
+                    ssms200.Insert(row);
+                    _log.WriteInformation(
+                        $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] OP200 INSERT  Serial={dto.ShaftSerial}  판정={dto.TotalJudge}");
+                }
 
                 // 모델 통계 갱신
                 var ssmsModel = new SSMS_Model(_connectionString);
@@ -84,25 +119,24 @@ namespace ConSight.DAQ.Sequence
                     ssmsModel.Update(model);
                 }
 
-                // EMPG INSERT
-                new SSMS_Op200(_connectionString).Insert(row);
-
-                // CSV 기록 (OP200 시점에는 APD27~44 비어있음 — 서브공정 후 별도 기록)
                 _csvWriter.Append(row);
                 _eventBus.Publish(row);
 
+                sw.Stop();
                 _log.WriteInformation(
-                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] OP200 완료  Model={dto.Model}  판정={dto.TotalJudge}");
+                    $"[ProcessData_Op200] 경과={sw.ElapsedMilliseconds}ms  Model={dto.Model}  판정={dto.TotalJudge}");
 
                 DataBackUp_ResultSet(_op200Write);
             }
             catch (ExpException expEx)
             {
+                sw.Stop();
                 DataBackUp_ResultSet(_op200Write, eDataBackup_ProcessResult.NG);
                 _log.WriteExpException(expEx);
             }
             catch (Exception ex)
             {
+                sw.Stop();
                 DataBackUp_ResultSet(_op200Write, eDataBackup_ProcessResult.NG);
                 _log.WriteException(ex);
             }
@@ -295,10 +329,9 @@ namespace ConSight.DAQ.Sequence
         private static EmpgRow BuildFallback(
             string repair, string model, string serial01, string serial02)
         {
-            string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             return new EmpgRow
             {
-                ResultId    = $"R-{now}",
+                ResultId    = Guid.NewGuid().ToString("N"),
                 UpdateTime  = DateTime.Now,
                 Repair      = repair,
                 Model       = model,

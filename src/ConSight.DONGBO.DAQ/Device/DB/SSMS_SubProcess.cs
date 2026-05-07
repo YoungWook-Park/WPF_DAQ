@@ -116,7 +116,7 @@ namespace ConSight.DAQ.Device
 
             // ResultId 가 없으면 지금 생성
             if (string.IsNullOrEmpty(row.ResultId))
-                row.ResultId = $"R-{now}";
+                row.ResultId = Guid.NewGuid().ToString("N");
 
             var nqExe = new NonQueryExecution(_connectionString);
             string sql1 = "";

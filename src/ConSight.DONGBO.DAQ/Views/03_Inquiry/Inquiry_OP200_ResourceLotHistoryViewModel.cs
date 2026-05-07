@@ -9,6 +9,7 @@
 //   - BuildQuery() 헬퍼 — SELECT 컬럼 목록 4회 중복 제거
 //   - ObservableCollection<T>  (ObservableRangeCollection 제거)
 //   - MainCore 의존 제거 → connectionString DI
+//FeatureB Edit
 
 using Bi.ConSight.SqlAgent;
 using Bi.ConSightCommon;
@@ -246,6 +247,7 @@ namespace ConSight.DAQ.Views
                 (hasModel ? "AND MODEL = @model " : "") +
                 "ORDER BY UPDATE_TIME";
             qExe.AppendQuery(sql);
+            // UPDATE_TIME은 datetime2 — DateTime 파라미터로 전달 (AddParameter가 DateTime2로 매핑)
             qExe.AddParameter("@sDate", startDate);
             qExe.AddParameter("@eDate", endDate);
             if (hasModel)
