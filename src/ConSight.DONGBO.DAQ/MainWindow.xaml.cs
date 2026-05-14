@@ -13,6 +13,7 @@ using ConSight.DAQ.Device.PLC.OP220;
 using ConSight.DAQ.Device.PLC.OP230;
 using ConSight.DAQ.Sequence;
 using ConSight.DAQ.Views;
+using ConSight.DAQ.Views.Monitoring;
 using ConSight.DONGBO.DAQ.Views;
 
 namespace ConSight.DONGBO.DAQ;
@@ -74,7 +75,9 @@ public partial class MainWindow : Window
 
         _plcLoop = new PlcReadLoop(_tcpDriver, controlUnit);
 
-        // MonitoringViewHost.Content は C5 で設定
+        var monVm = new MonitoringViewModel(_eventBus);
+        MonitoringViewHost.Content = new MonitoringView(monVm);
+
         _ = controlUnit.RunTimeTriggerLoopAsync(_cts.Token);
         _ = _plcLoop.RunAsync(_cts.Token);
     }

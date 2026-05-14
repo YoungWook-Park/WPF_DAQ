@@ -1,0 +1,40 @@
+<UserControl x:Class="ConSight.DAQ.Views.Monitoring.MonitoringView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DataGrid ItemsSource="{Binding Rows}"
+              AutoGenerateColumns="False"
+              IsReadOnly="True"
+              CanUserAddRows="False"
+              GridLinesVisibility="Horizontal"
+              AlternatingRowBackground="#F8F8F8"
+              FontSize="12">
+
+        <DataGrid.RowStyle>
+            <Style TargetType="DataGridRow">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding TotalJudge}" Value="NG">
+                        <Setter Property="Background" Value="#FFEEEE"/>
+                        <Setter Property="Foreground" Value="#CC0000"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </DataGrid.RowStyle>
+
+        <DataGrid.Columns>
+            <DataGridTextColumn Header="시간"       Binding="{Binding UpdateTime, StringFormat=HH:mm:ss}" Width="72"/>
+            <DataGridTextColumn Header="모델"       Binding="{Binding Model}"       Width="80"/>
+            <DataGridTextColumn Header="Serial1"   Binding="{Binding MatSerial01}" Width="110"/>
+            <DataGridTextColumn Header="Serial2"   Binding="{Binding MatSerial02}" Width="110"/>
+            <DataGridTextColumn Header="판정"       Binding="{Binding TotalJudge}"  Width="50"/>
+            <DataGridTextColumn Header="GR판정"     Binding="{Binding Apd07}"       Width="58"/>
+            <DataGridTextColumn Header="BR판정"     Binding="{Binding Apd15}"       Width="58"/>
+            <DataGridTextColumn Header="SR판정"     Binding="{Binding Apd24}"       Width="58"/>
+            <DataGridTextColumn Header="EP판정"     Binding="{Binding Apd26}"       Width="58"/>
+            <DataGridTextColumn Header="RunOut입력" Binding="{Binding Apd28}"       Width="82"/>
+            <DataGridTextColumn Header="RunOut공간" Binding="{Binding Apd30}"       Width="82"/>
+            <DataGridTextColumn Header="Guiding"   Binding="{Binding Apd33}"       Width="68"/>
+            <DataGridTextColumn Header="SOCP판정"   Binding="{Binding Apd42}"       Width="72"/>
+            <DataGridTextColumn Header="SOC판정"    Binding="{Binding Apd44}"       Width="72"/>
+        </DataGrid.Columns>
+    </DataGrid>
+</UserControl>
