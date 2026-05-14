@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="Bi.ConSight.SqlAgent/Bi.ConSight.SqlAgent.csproj" />
   <Project Path="ConSight.DONGBO.DAQ/ConSight.DONGBO.DAQ.csproj" />
+  <Project Path="ConSight.DONGBO.PlcSimulator/ConSight.DONGBO.PlcSimulator.csproj" />
 </Solution>

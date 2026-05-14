@@ -1,49 +1,68 @@
 # CLAUDE.md
 
-이 파일은 Claude Code가 이 저장소에서 작업할 때 따라야 할 지침을 제공합니다.
+## 개발 환경
 
-## 빌드 및 실행
+- .NET 10 · Windows 전용 (`net10.0-windows`, WPF)
+- SQL Server Express: `Server=.\SQLEXPRESS;Database=DB_eM;Integrated Security=SSPI;TrustServerCertificate=True`
+- PLC Simulator: 별도 프로세스, TCP `localhost:5000`
+
+## 자주 사용하는 명령어
 
 ```powershell
 dotnet build src/ConSight.DONGBO.slnx
 dotnet run --project src/ConSight.DONGBO.DAQ/ConSight.DONGBO.DAQ.csproj
-dotnet run --project src/ConSight.DONGBO.PlcSimulator/ConSight.DONGBO.PlcSimulator.csproj  # featureA, 별도 터미널
+dotnet run --project src/ConSight.DONGBO.PlcSimulator/ConSight.DONGBO.PlcSimulator.csproj
+dotnet test src/ConSight.DONGBO.DAQ.Tests --filter Category=Unit
+dotnet test src/ConSight.DONGBO.DAQ.Tests --filter Category=Integration
 ```
 
-런타임: SQL Server Express `Server=.\SQLEXPRESS;Database=DB_eM;Integrated Security=SSPI;TrustServerCertificate=True`
+## 핵심 파일 & 유틸리티
 
-## 테스트
+| 파일 | 역할 |
+|------|------|
+| `Sequence/Controller/ControlUnit_DAQ.cs` | OP200~230 파이프라인 오케스트레이터 |
+| `Device/PLC/Net/TcpPlcDriver.cs` | TCP `IPlcDriver` 구현체 |
+| `Device/PLC/IPlcDriver.cs` | PLC 드라이버 계약 |
+| `AppEvent/ProcessEventBus.cs` | `EmpgRow` 발행/구독 버스 |
+| `Device/DB/EmpgRow.cs` | 제조 레코드 aggregate root (91 fields) |
+| `Views/99_Test/ProcessPipelineTestView.xaml.cs:349` | Mock `short[]` 빌더 원본 — `MockArrayBuilder` 복제 시 동기화 유지 |
 
-```powershell
-dotnet test src/ConSight.DONGBO.DAQ.Tests --filter Category=Unit         # DB 불필요
-dotnet test src/ConSight.DONGBO.DAQ.Tests --filter Category=Integration  # SQLEXPRESS 필요
+유틸리티 함수:
+- `PlcParseHelper.F2/F2Int/F4Int/Judge/Serial/Repair()` — PLC short[] → 도메인 값 변환
+- `PlcDataConverter.ShortToString(arr, offset, maxWords)` — PLC ASCII 디코딩 (Compat 어셈블리)
+
+## 코드 스타일
+
+**Namespace**: DAQ 프로젝트 신규 파일은 `ConSight.DAQ.*` 유지. Simulator 프로젝트는 `ConSight.DONGBO.PlcSimulator.*`  
+**접근 제한**: 어셈블리 내부 전용은 `internal`. 테스트 접근 필요 시 `[assembly: InternalsVisibleTo("ConSight.DONGBO.DAQ.Tests")]` (AssemblyInfo.cs)  
+**클래스**: 상속 없는 구현체는 `sealed class`  
+**DTO**: `init`-only setter. `IEnumerable<string> Judges` 패턴으로 TotalJudge 재계산 대상 필드 선언  
+**공유 상태**: `object _lock` + `lock` 블록으로 직렬화  
+**주석**: 신규 파일은 Phase 블록 주석 없이. Why가 자명하지 않은 경우만 인라인 주석
+
+## 테스트 지침
+
+```csharp
+[Trait("Category", "Unit")]        // DB·TCP 불필요, MockPlcDriver 또는 PlcMemory 직접 사용
+[Trait("Category", "Integration")] // SQLEXPRESS 필요. 미가동 시 Assert.Skip() 으로 건너뜀
 ```
 
-인앱 테스트: **Pipeline Test** 탭 → Parser/Full Pipeline 버튼 (소스: `Views/99_Test/ProcessPipelineTestView.xaml.cs`)
+각 커밋 전 `dotnet test --filter Category=Unit` 통과 필수. Integration은 SQLEXPRESS 환경에서만 실행.
 
-## 솔루션 구조
+## 저장소 에티켓
 
-```
-src/
-  ConSight.DONGBO.slnx
-  Bi.ConSight.SqlAgent/         # ADO.NET 래퍼 (SqlConnectionFactory, QueryExecution, NonQueryExecution)
-  ConSight.DONGBO.DAQ/          # 메인 WPF 앱 (.NET 10-windows)
-  ConSight.DONGBO.PlcSimulator/ # PLC 시뮬레이터 (featureA, TCP port 5000)
-  ConSight.DONGBO.DAQ.Tests/    # xUnit 테스트 (featureA)
-docs/
-  architecture.md               # 아키텍처 상세 (패턴, Directory Map, Composition)
-  featureA-work-plan.md         # featureA 설계서 (PLC 주소, TCP 프로토콜, 작업 분해)
-```
+**커밋 형식**: `feat(C2): 설명` (C2~C7 범위 명시). 버그 수정은 `fix: 설명`, 일지는 `devlog: YYYY-MM-DD`  
+**커밋 전 체크**: `dotnet build src/ConSight.DONGBO.slnx` 성공 확인  
+**브랜치**: `feature/featureA` — C2~C7 커밋을 순서대로 쌓음
 
-## 아키텍처
+## 핵심 불변조건
 
-상세 내용: `docs/architecture.md`
-
-핵심 불변조건:
-- DI 컨테이너 없음 — `ControlUnit_DAQ` 등 모든 의존성은 `MainWindow.InitViews()` 에서 수동 wire-up
-- `RunTimeTriggerLoopAsync()` 와 `PlcReadLoop.RunAsync()` 는 self-starting 아님 — `MainWindow` 에서 직접 Task 시작
+- DI 컨테이너 없음 — 모든 의존성은 `MainWindow.InitViews()` 에서 수동 wire-up
+- `RunTimeTriggerLoopAsync()` 와 `PlcReadLoop.RunAsync()` 는 self-starting 아님 — `MainWindow` 에서 `_ = method(_cts.Token)` 으로 시작
 - EventBus 구독자는 백그라운드 스레드에서 호출됨 → UI 갱신 시 `Dispatcher.InvokeAsync()` 필수
-- mock `short[]` 빌더와 파서 오프셋은 항상 동기화 유지 (`ProcessPipelineTestView.xaml.cs` ↔ 각 `OpXXXParser`)
+- Mock `short[]` 빌더(MockArrayBuilder)와 파서 오프셋 항상 동기화 유지
+
+상세 아키텍처: `docs/architecture.md` | C2~C7 구현 계획: `docs/impl-plan.md`
 
 ## 작업 관리
 
