@@ -111,7 +111,7 @@ namespace ConSight.DAQ.Device.PLC.Net
             return false;
         }
 
-        private void CloseConnection()
+        internal void CloseConnection()
         {
             _stream?.Dispose();
             _stream = null;
