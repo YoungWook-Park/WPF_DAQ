@@ -14,46 +14,44 @@ public class WireProtocolTests
     [Fact]
     public void BuildReadRequest_EncodesAddrAndWordCount()
     {
-        var buf = PlcWireProtocol.BuildReadRequest("D2000", 100);
+        var requestBytes  = PlcWireProtocol.BuildReadRequest("D2000", 100);
+        int addressLength = "D2000".Length;
 
-        int addrLen = "D2000".Length; // 5
-        Assert.Equal((byte)'R',  buf[0]);
-        Assert.Equal(addrLen,    buf[1]);
-        Assert.Equal("D2000",    Encoding.ASCII.GetString(buf, 2, addrLen));
-        Assert.Equal(0,          buf[2 + addrLen]); // 100 >> 8
-        Assert.Equal(100,        buf[3 + addrLen]); // 100 & 0xFF
-        Assert.Equal(4 + addrLen, buf.Length);
+        Assert.Equal((byte)'R',     requestBytes[0]);
+        Assert.Equal(addressLength, requestBytes[1]);
+        Assert.Equal("D2000",       Encoding.ASCII.GetString(requestBytes, 2, addressLength));
+        Assert.Equal(0,             requestBytes[2 + addressLength]); // 100 >> 8
+        Assert.Equal(100,           requestBytes[3 + addressLength]); // 100 & 0xFF
+        Assert.Equal(4 + addressLength, requestBytes.Length);
     }
 
     [Fact]
     public void BuildWriteRequest_EncodesPayloadBigEndian()
     {
-        var data = new short[] { 0x0102, -1 };
-        var buf = PlcWireProtocol.BuildWriteRequest("D2001", data);
+        var writeData     = new short[] { 0x0102, -1 };
+        var requestBytes  = PlcWireProtocol.BuildWriteRequest("D2001", writeData);
+        int addressLength = "D2001".Length;
+        int headerLength  = 4 + addressLength;
 
-        int addrLen   = "D2001".Length; // 5
-        int headerLen = 4 + addrLen;
-
-        Assert.Equal((byte)'W', buf[0]);
-        Assert.Equal(addrLen,   buf[1]);
-        Assert.Equal(0,         buf[2 + addrLen]); // wordCount(2) >> 8
-        Assert.Equal(2,         buf[3 + addrLen]); // wordCount(2) & 0xFF
+        Assert.Equal((byte)'W', requestBytes[0]);
+        Assert.Equal(addressLength, requestBytes[1]);
+        Assert.Equal(0, requestBytes[2 + addressLength]); // wordCount(2) >> 8
+        Assert.Equal(2, requestBytes[3 + addressLength]); // wordCount(2) & 0xFF
 
         // word[0] = 0x0102 → [0x01, 0x02]
-        Assert.Equal(0x01, buf[headerLen]);
-        Assert.Equal(0x02, buf[headerLen + 1]);
+        Assert.Equal(0x01, requestBytes[headerLength]);
+        Assert.Equal(0x02, requestBytes[headerLength + 1]);
 
         // word[1] = -1 = 0xFFFF → [0xFF, 0xFF]
-        Assert.Equal(0xFF, (byte)buf[headerLen + 2]);
-        Assert.Equal(0xFF, (byte)buf[headerLen + 3]);
+        Assert.Equal(0xFF, (byte)requestBytes[headerLength + 2]);
+        Assert.Equal(0xFF, (byte)requestBytes[headerLength + 3]);
     }
 
     [Fact]
     public void TryReadResponse_ReturnsFalse_OnUnexpectedOp()
     {
-        // 서버가 'W' 응답을 보냈지만 클라이언트는 'R' 기대
-        using var ms = new MemoryStream(new byte[] { (byte)'W', 0, 0, 0 });
-        var result = PlcWireProtocol.TryReadResponse(ms, (byte)'R', out var words);
+        using var responseStream = new MemoryStream(new byte[] { (byte)'W', 0, 0, 0 });
+        var result = PlcWireProtocol.TryReadResponse(responseStream, (byte)'R', out _);
 
         Assert.False(result);
     }
@@ -61,9 +59,8 @@ public class WireProtocolTests
     [Fact]
     public void TryReadResponse_ReturnsFalse_OnErrorStatus()
     {
-        // status=1(ERR) 응답
-        using var ms = new MemoryStream(new byte[] { (byte)'R', 1, 0, 3 });
-        var result = PlcWireProtocol.TryReadResponse(ms, (byte)'R', out var words);
+        using var responseStream = new MemoryStream(new byte[] { (byte)'R', 1, 0, 3 });
+        var result = PlcWireProtocol.TryReadResponse(responseStream, (byte)'R', out _);
 
         Assert.False(result);
     }
@@ -71,7 +68,6 @@ public class WireProtocolTests
     [Fact]
     public void TryReadResponse_DecodesWords_OnSuccessfulReadResponse()
     {
-        // 'R' 성공 응답: status=0, wordCount=3, data=[1,2,3]
         var responseBytes = new byte[]
         {
             (byte)'R', 0,   // op='R', status=OK
@@ -80,8 +76,8 @@ public class WireProtocolTests
             0, 2,           // word[1] = 2
             0, 3,           // word[2] = 3
         };
-        using var ms = new MemoryStream(responseBytes);
-        var success = PlcWireProtocol.TryReadResponse(ms, (byte)'R', out var words);
+        using var responseStream = new MemoryStream(responseBytes);
+        var success = PlcWireProtocol.TryReadResponse(responseStream, (byte)'R', out var words);
 
         Assert.True(success);
         Assert.Equal(3, words.Length);
@@ -93,9 +89,8 @@ public class WireProtocolTests
     [Fact]
     public void TryReadResponse_ReturnsTrue_OnSuccessfulWriteResponse()
     {
-        // 'W' 성공 응답: status=0, wordCount=0, payload 없음
-        using var ms = new MemoryStream(new byte[] { (byte)'W', 0, 0, 0 });
-        var result = PlcWireProtocol.TryReadResponse(ms, (byte)'W', out var words);
+        using var responseStream = new MemoryStream(new byte[] { (byte)'W', 0, 0, 0 });
+        var result = PlcWireProtocol.TryReadResponse(responseStream, (byte)'W', out var words);
 
         Assert.True(result);
         Assert.Empty(words);

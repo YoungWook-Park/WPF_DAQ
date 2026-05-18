@@ -12,38 +12,37 @@ public class HandshakeTests
     [Fact]
     public void PlcMemory_Read_ReturnsZeroArray_WhenAddrNotPreInitialized()
     {
-        var mem = new PlcMemory();
-        // D9999는 생성자에서 초기화되지 않은 주소
-        var data = mem.Read("D9999", 5);
+        var memory = new PlcMemory();
+        var readData = memory.Read("D9999", 5);
 
-        Assert.Equal(5, data.Length);
-        Assert.All(data, v => Assert.Equal(0, v));
+        Assert.Equal(5, readData.Length);
+        Assert.All(readData, value => Assert.Equal(0, value));
     }
 
     [Fact]
     public void PlcMemory_Written_FiresAfterWrite()
     {
-        var mem = new PlcMemory();
-        string? firedAddr = null;
-        short[]? firedData = null;
+        var memory = new PlcMemory();
+        string? capturedAddress = null;
+        short[]? capturedData   = null;
 
-        mem.Written += (addr, data) => { firedAddr = addr; firedData = data; };
-        mem.Write("D2000", new short[] { 1, 2, 3 });
+        memory.Written += (address, data) => { capturedAddress = address; capturedData = data; };
+        memory.Write("D2000", new short[] { 1, 2, 3 });
 
-        Assert.Equal("D2000", firedAddr);
-        Assert.Equal(new short[] { 1, 2, 3 }, firedData);
+        Assert.Equal("D2000", capturedAddress);
+        Assert.Equal(new short[] { 1, 2, 3 }, capturedData);
     }
 
     [Fact]
     public void PlcMemory_Write_StoresClone_NotOriginalReference()
     {
-        var mem = new PlcMemory();
+        var memory   = new PlcMemory();
         var original = new short[] { 7, 8 };
-        mem.Write("D2000", original);
+        memory.Write("D2000", original);
 
         original[0] = 99; // 원본 수정
 
-        var readBack = mem.Read("D2000", 2);
+        var readBack = memory.Read("D2000", 2);
         Assert.Equal(7, readBack[0]); // 클론이어야 함
     }
 
@@ -52,62 +51,61 @@ public class HandshakeTests
     [Fact]
     public void SignalHandler_ResetsBackupStart_OnOp200Complete()
     {
-        var mem = new PlcMemory();
-        var proc = new short[100];
-        proc[0] = 1; // BackUp_Start
-        mem.Write("D2000", proc);
+        var memory      = new PlcMemory();
+        var processData = new short[100];
+        processData[0]  = 1; // BackUp_Start
+        memory.Write("D2000", processData);
 
-        _ = new SimulatorSignalHandler(mem);
+        _ = new SimulatorSignalHandler(memory);
 
         // DAQ가 PC_Complete_Flag(D2001[1]) = 1 로 쓰면
-        mem.Write("D2001", new short[] { 0, 1, 0 });
+        memory.Write("D2001", new short[] { 0, 1, 0 });
 
-        Assert.Equal(0, mem.Read("D2000", 1)[0]); // BackUp_Start 리셋
-        Assert.Equal(0, mem.Read("D2001", 3)[1]); // PC_Complete_Flag 리셋
+        Assert.Equal(0, memory.Read("D2000", 1)[0]); // BackUp_Start 리셋
+        Assert.Equal(0, memory.Read("D2001", 3)[1]); // PC_Complete_Flag 리셋
     }
 
     [Fact]
     public void SignalHandler_ResetsBackupStart_OnOp210Complete()
     {
-        var mem = new PlcMemory();
-        var proc = new short[70];
-        proc[0] = 1; // BackUp_Start
-        mem.Write("D2200", proc);
+        var memory      = new PlcMemory();
+        var processData = new short[70];
+        processData[0]  = 1; // BackUp_Start
+        memory.Write("D2200", processData);
 
-        _ = new SimulatorSignalHandler(mem);
+        _ = new SimulatorSignalHandler(memory);
 
-        mem.Write("D2201", new short[] { 1 });
+        memory.Write("D2201", new short[] { 1 });
 
-        Assert.Equal(0, mem.Read("D2200", 1)[0]);
-        Assert.Equal(0, mem.Read("D2201", 1)[0]);
+        Assert.Equal(0, memory.Read("D2200", 1)[0]);
+        Assert.Equal(0, memory.Read("D2201", 1)[0]);
     }
 
     [Fact]
     public void SignalHandler_NoAction_WhenPcCompleteIsZero()
     {
-        var mem = new PlcMemory();
-        var proc = new short[100];
-        proc[0] = 1; // BackUp_Start 유지
-        mem.Write("D2000", proc);
+        var memory      = new PlcMemory();
+        var processData = new short[100];
+        processData[0]  = 1; // BackUp_Start 유지
+        memory.Write("D2000", processData);
 
-        _ = new SimulatorSignalHandler(mem);
+        _ = new SimulatorSignalHandler(memory);
 
         // PC_Complete_Flag = 0 → 핸들러 아무 동작 없음
-        mem.Write("D2001", new short[] { 0, 0, 0 });
+        memory.Write("D2001", new short[] { 0, 0, 0 });
 
-        Assert.Equal(1, mem.Read("D2000", 1)[0]); // BackUp_Start 여전히 1
+        Assert.Equal(1, memory.Read("D2000", 1)[0]); // BackUp_Start 여전히 1
     }
 
     [Fact]
     public void SignalHandler_NoInfiniteRecursion_OnReset()
     {
-        // ResetWord가 Written을 다시 발화해도 값이 0이므로 재귀 없음
-        var mem = new PlcMemory();
-        _ = new SimulatorSignalHandler(mem);
+        var memory = new PlcMemory();
+        _ = new SimulatorSignalHandler(memory);
 
-        var ex = Record.Exception(() =>
-            mem.Write("D2001", new short[] { 0, 1, 0 }));
+        var exception = Record.Exception(() =>
+            memory.Write("D2001", new short[] { 0, 1, 0 }));
 
-        Assert.Null(ex);
+        Assert.Null(exception);
     }
 }
