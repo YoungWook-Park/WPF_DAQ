@@ -27,10 +27,13 @@ WPF_DAQ/
 │       └── Views/
 │           ├── 03_Inquiry/            # Inquiry_OP200_ResourceLotHistory (ADO.NET + EF Core)
 │           └── 99_Test/               # ProcessPipelineTestView (파이프라인 수동 테스트)
+├── docs/
+│   ├── architecture.md                # 아키텍처·PLC 주소·핵심 패턴 레퍼런스
+│   └── test-cases.md                  # xUnit 테스트 케이스 목록
 ├── sql/                               # 테스트 데이터 SQL, 아카이브 스크립트
 ├── benchmark/                         # 성능 측정 결과 (Phase 1~3)
-├── PLAN.md                            # 작업 계획
-└── PROGRESS.md                        # 작업 이력
+├── PLAN.md                            # 프로젝트 목적 + 성능 결과 요약
+└── PROGRESS.md                        # 완료 이력 한 줄 요약
 ```
 
 ---

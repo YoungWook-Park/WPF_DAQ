@@ -2,11 +2,13 @@
   "permissions": {
     "allow": [
       "PowerShell(dotnet new classlib *)",
-      "PowerShell(dotnet new wpf *)"
+      "PowerShell(dotnet new wpf *)",
+      "PowerShell(sqlcmd *)",
+      "PowerShell(dotnet build *)"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "jira"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }

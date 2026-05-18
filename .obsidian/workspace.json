@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "devlog/2026-05-14.md",
+                "file": "docs/test-cases.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "2026-05-14"
+              "title": "test-cases"
             }
           }
         ]
@@ -185,26 +185,29 @@
   },
   "active": "088579abc185c449",
   "lastOpenFiles": [
+    "docs/architecture.md",
     "CLAUDE.md",
-    "devlog/2026-05-14.md",
-    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/2rdo3hzv.gdu~",
+    "AGENTS.md",
+    "docs/test-cases.md",
+    "README.md.tmp.28404.f045caed9c01",
+    "PROGRESS.md.tmp.28404.30baddeb84ac",
+    "PLAN.md.tmp.28404.212e5ab9747d",
+    "src/ConSight.DONGBO.DAQ.Tests/bin/Release/net10.0-windows/ConSight.DONGBO.PlcSimulator.exe",
+    "src/ConSight.DONGBO.DAQ.Tests/bin/Release/net10.0-windows/vevhsrfh.r2v~",
+    "src/Bi.ConSight.SqlAgent/obj/8507afdf-ae30-41e2-bd7c-33c27c23e5b6.tmp",
+    "PLAN.md",
+    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/it/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll",
+    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/it/Microsoft.VisualStudio.TestPlatform.Common.resources.dll",
+    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/it/Microsoft.TestPlatform.CoreUtilities.resources.dll",
+    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/it/Microsoft.TestPlatform.CrossPlatEngine.resources.dll",
     "docs/impl-plan.md",
     "docs/featureA-work-plan.md",
-    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/Microsoft.SqlServer.Server.dll",
-    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/xunit.assert.dll",
-    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/Microsoft.Data.SqlClient.Internal.Logging.dll",
-    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/xunit.execution.dotnet.dll",
-    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/xunit.core.dll",
-    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/xunit.runner.reporters.netcoreapp10.dll",
-    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/xunit.abstractions.dll",
-    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/xunit.runner.utility.netcoreapp10.dll",
-    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/Microsoft.VisualStudio.TestPlatform.Common.dll",
+    "benchmark/phase2_with_index.md",
+    "benchmark/phase3_efcore.md",
+    "benchmark/phase1_no_index.md",
+    "devlog/2026-05-14.md",
     "devlog/2026-05-07.md",
-    "AGENTS.md",
     "README.md",
-    "PROGRESS.md",
-    "PLAN.md",
-    "docs/architecture.md",
-    "benchmark/phase3_efcore.md"
+    "PROGRESS.md"
   ]
 }

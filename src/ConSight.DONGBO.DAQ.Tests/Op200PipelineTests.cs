@@ -22,55 +22,65 @@ namespace ConSight.DONGBO.DAQ.Tests;
 [Trait("Category", "Integration")]
 public sealed class Op200PipelineTests : IAsyncLifetime
 {
-    private PlcMemory _memory = null!;
-    private PlcSimulatorServer _server = null!;
-    private TcpPlcDriver _driver = null!;
-    private CancellationTokenSource _cts = null!;
+    private PlcMemory            _plcMemory          = null!;
+    private PlcSimulatorServer   _simulatorServer    = null!;
+    private TcpPlcDriver         _plcDriver          = null!;
+    private CancellationTokenSource _cancellationSource = null!;
     private Task _loopTask = Task.CompletedTask;
 
     public async Task InitializeAsync()
     {
-        int port = GetFreePort();
-        _memory = new PlcMemory();
-        _ = new SimulatorSignalHandler(_memory);
-        _server = new PlcSimulatorServer(_memory, port);
-        _server.Start();
+        int port    = GetFreePort();
+        _plcMemory  = new PlcMemory();
+        _ = new SimulatorSignalHandler(_plcMemory);
+        _simulatorServer = new PlcSimulatorServer(_plcMemory, port);
+        _simulatorServer.Start();
 
-        _driver = new TcpPlcDriver("localhost", port);
+        _plcDriver = new TcpPlcDriver("localhost", port);
 
-        var buf200 = new PlcWriteBuffer(_driver, "D2001", 3);
-        var buf210 = new PlcWriteBuffer(_driver, "D2201", 1);
-        var buf220 = new PlcWriteBuffer(_driver, "D2301", 1);
-        var buf230 = new PlcWriteBuffer(_driver, "D2401", 1);
+        var op200Buffer      = new PlcWriteBuffer(_plcDriver, "D2001", 3);
+        var op210Buffer      = new PlcWriteBuffer(_plcDriver, "D2201", 1);
+        var op220Buffer      = new PlcWriteBuffer(_plcDriver, "D2301", 1);
+        var op230Buffer      = new PlcWriteBuffer(_plcDriver, "D2401", 1);
 
-        var op200Write = new Op200WriteRegion(buf200);
-        var op210Write = new Op210WriteRegion(buf210);
-        var op220Write = new Op220WriteRegion(buf220);
-        var op230Write = new Op230WriteRegion(buf230);
+        var op200WriteRegion = new Op200WriteRegion(op200Buffer);
+        var op210WriteRegion = new Op210WriteRegion(op210Buffer);
+        var op220WriteRegion = new Op220WriteRegion(op220Buffer);
+        var op230WriteRegion = new Op230WriteRegion(op230Buffer);
 
-        var csvWriter = new EmpgCsvWriter(Path.Combine(Path.GetTempPath(), "daq_inttest_csv"));
-        var eventBus  = new ProcessEventBus();
-        var unit      = new ControlUnit_DAQ(
+        var csvWriter   = new EmpgCsvWriter(Path.Combine(Path.GetTempPath(), "daq_inttest_csv"));
+        var eventBus    = new ProcessEventBus();
+        var controlUnit = new ControlUnit_DAQ(
             SqlExpressSkip.ConnectionString,
-            op200Write, op210Write, op220Write, op230Write,
+            op200WriteRegion, op210WriteRegion, op220WriteRegion, op230WriteRegion,
             csvWriter, eventBus);
 
-        _cts = new CancellationTokenSource();
-        _loopTask = new PlcReadLoop(_driver, unit).RunAsync(_cts.Token);
+        _cancellationSource = new CancellationTokenSource();
+        _loopTask = new PlcReadLoop(_plcDriver, controlUnit).RunAsync(_cancellationSource.Token);
 
-        await Task.Delay(200); // TCP accept loop 시작 대기
+        await Task.Delay(200); // TCP accept 루프 시작 대기
     }
 
     public async Task DisposeAsync()
     {
-        _cts.Cancel();
-        _driver?.CloseConnection();
-        _server?.Stop();
+        _cancellationSource.Cancel();
+        _plcDriver?.CloseConnection();
+        _simulatorServer?.Stop();
         try { await _loopTask; } catch { }
+
+        if (SqlExpressSkip.GetSkipReason() == null)
+        {
+            using var sqlConnection = new Microsoft.Data.SqlClient.SqlConnection(SqlExpressSkip.ConnectionString);
+            sqlConnection.Open();
+            using var sqlCommand = sqlConnection.CreateCommand();
+            sqlCommand.CommandText =
+                "DELETE FROM EMPG WHERE MAT_SERIAL01='SN-00001';" +
+                "DELETE FROM STS_MODEL_TB WHERE MODEL='MODEL-A';";
+            try { sqlCommand.ExecuteNonQuery(); } catch { }
+        }
     }
 
-    // SQLEXPRESS 미가동 또는 EMPG 테이블 없으면 vacuous pass (조건 없는 return)
-    // xUnit 2.x 에서 SkipException을 InitializeAsync 밖 본문에서만 처리하므로 early-return 패턴 사용
+    // SQLEXPRESS 미가동 또는 EMPG 테이블 없으면 vacuous pass (early-return)
 
     [Fact]
     public async Task TriggerOp200_WritesPcCompleteFlag_AfterProcessing()
@@ -78,12 +88,12 @@ public sealed class Op200PipelineTests : IAsyncLifetime
         if (SqlExpressSkip.GetSkipReason() != null) return;
 
         // d[1] > 0: OK(1) 또는 NG(2) 모두 처리 완료 신호
-        var pcWritten = WaitForWrittenAsync("D2001", d => d.Length > 1 && d[1] > 0, 10_000);
+        var completeSignalWritten = WaitForWrittenAsync("D2001", data => data.Length > 1 && data[1] > 0, 10_000);
 
-        _memory.Write("D1900", MockArrayBuilder.BuildOp200SettingArray());
-        _memory.Write("D2000", MockArrayBuilder.BuildOp200ProcArray());
+        _plcMemory.Write("D1900", MockArrayBuilder.BuildOp200SettingArray());
+        _plcMemory.Write("D2000", MockArrayBuilder.BuildOp200ProcArray());
 
-        Assert.True(await pcWritten, "10초 내에 PC_Complete_Flag(D2001[1]>0)가 쓰이지 않음");
+        Assert.True(await completeSignalWritten, "10초 내에 PC_Complete_Flag(D2001[1]>0)가 쓰이지 않음");
     }
 
     [Fact]
@@ -91,12 +101,12 @@ public sealed class Op200PipelineTests : IAsyncLifetime
     {
         if (SqlExpressSkip.GetSkipReason() != null) return;
 
-        var pcWritten = WaitForWrittenAsync("D2001", d => d.Length > 1 && d[1] > 0, 10_000);
+        var completeSignalWritten = WaitForWrittenAsync("D2001", data => data.Length > 1 && data[1] > 0, 10_000);
 
-        _memory.Write("D1900", MockArrayBuilder.BuildOp200SettingArray());
-        _memory.Write("D2000", MockArrayBuilder.BuildOp200ProcArray());
+        _plcMemory.Write("D1900", MockArrayBuilder.BuildOp200SettingArray());
+        _plcMemory.Write("D2000", MockArrayBuilder.BuildOp200ProcArray());
 
-        Assert.True(await pcWritten, "10초 내에 PC_Complete_Flag가 쓰이지 않음");
+        Assert.True(await completeSignalWritten, "10초 내에 PC_Complete_Flag가 쓰이지 않음");
 
         var row = new SSMS_Op200(SqlExpressSkip.ConnectionString).FindBySerial("SN-00001");
         Assert.NotNull(row);
@@ -104,31 +114,31 @@ public sealed class Op200PipelineTests : IAsyncLifetime
 
     // ── 헬퍼 ────────────────────────────────────────────────────────────────
 
-    private Task<bool> WaitForWrittenAsync(string addr, Func<short[], bool> predicate, int timeoutMs)
+    private Task<bool> WaitForWrittenAsync(string address, Func<short[], bool> predicate, int timeoutMs)
     {
-        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completionSource = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        void Handler(string a, short[] data)
+        void Handler(string writtenAddress, short[] writtenData)
         {
-            if (a == addr && predicate(data))
-                tcs.TrySetResult(true);
+            if (writtenAddress == address && predicate(writtenData))
+                completionSource.TrySetResult(true);
         }
 
-        _memory.Written += Handler;
-        return Task.WhenAny(tcs.Task, Task.Delay(timeoutMs))
+        _plcMemory.Written += Handler;
+        return Task.WhenAny(completionSource.Task, Task.Delay(timeoutMs))
             .ContinueWith(_ =>
             {
-                _memory.Written -= Handler;
-                return tcs.Task.IsCompletedSuccessfully;
+                _plcMemory.Written -= Handler;
+                return completionSource.Task.IsCompletedSuccessfully;
             });
     }
 
     private static int GetFreePort()
     {
-        var l = new TcpListener(IPAddress.Loopback, 0);
-        l.Start();
-        int port = ((IPEndPoint)l.LocalEndpoint).Port;
-        l.Stop();
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        listener.Stop();
         return port;
     }
 }
