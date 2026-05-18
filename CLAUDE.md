@@ -20,7 +20,10 @@ dotnet test src/ConSight.DONGBO.DAQ.Tests --filter Category=Integration
 
 | 파일 | 역할 |
 |------|------|
+| `MainCore.cs` | 싱글톤 진입점 — `PlcDriver`, `ControlUnit`, `PlcLoop`, `EventBus` 수명 관리 |
+| `MainCore.DriverEvent.cs` | partial — 드라이버/EventBus 이벤트 콜백 (`cFunc_` 접두사) |
 | `Sequence/Controller/ControlUnit_DAQ.cs` | OP200~230 파이프라인 오케스트레이터 |
+| `Sequence/PlcReadLoop.cs` | 100ms 폴링 루프 — BackUp_Start rising edge(`:48`) 감지 → 파이프라인 진입 |
 | `Device/PLC/Net/TcpPlcDriver.cs` | TCP `IPlcDriver` 구현체 |
 | `Device/PLC/IPlcDriver.cs` | PLC 드라이버 계약 |
 | `AppEvent/ProcessEventBus.cs` | `EmpgRow` 발행/구독 버스 |
@@ -57,10 +60,13 @@ dotnet test src/ConSight.DONGBO.DAQ.Tests --filter Category=Integration
 
 ## 핵심 불변조건
 
-- DI 컨테이너 없음 — 모든 의존성은 `MainWindow.InitViews()` 에서 수동 wire-up
-- `RunTimeTriggerLoopAsync()` 와 `PlcReadLoop.RunAsync()` 는 self-starting 아님 — `MainWindow` 에서 `_ = method(_cts.Token)` 으로 시작
+- DI 컨테이너 없음 — 모든 의존성은 `MainCore.Initialize()` 에서 수동 wire-up
+- `MainCore.Instance` 는 static readonly 싱글톤 — 생성자 private, 외부 new 불가
+- `RunTimeTriggerLoopAsync()` 와 `PlcReadLoop.RunAsync()` 는 self-starting 아님 — `MainCore.Start()` 에서 `_ = method(_cts.Token)` 으로 시작
+- `MainWindow` 코드비하인드는 UI 배선(`InitViews`)과 `cFunc_` 콜백만 — 디바이스 초기화 코드 금지
 - EventBus 구독자는 백그라운드 스레드에서 호출됨 → UI 갱신 시 `Dispatcher.InvokeAsync()` 필수
 - Mock `short[]` 빌더(MockArrayBuilder)와 파서 오프셋 항상 동기화 유지
+- 레거시 컨벤션: 이벤트 콜백은 `cFunc_` 접두사, 로그는 `Log.WriteInformation($"Location=..., Function=..., Action=...")` 형식
 
 상세 아키텍처: `docs/architecture.md` | C2~C7 구현 계획: `docs/impl-plan.md`
 

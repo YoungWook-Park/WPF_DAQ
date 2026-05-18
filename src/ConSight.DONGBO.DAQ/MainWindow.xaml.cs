@@ -1,17 +1,7 @@
 using System.ComponentModel;
-using System.IO;
 using System.Windows;
 using System.Windows.Threading;
-using ConSight.DAQ.AppEvent;
-using ConSight.DAQ.Device;
 using ConSight.DAQ.Device.DB;
-using ConSight.DAQ.Device.PLC;
-using ConSight.DAQ.Device.PLC.Net;
-using ConSight.DAQ.Device.PLC.OP200;
-using ConSight.DAQ.Device.PLC.OP210;
-using ConSight.DAQ.Device.PLC.OP220;
-using ConSight.DAQ.Device.PLC.OP230;
-using ConSight.DAQ.Sequence;
 using ConSight.DAQ.Views;
 using ConSight.DAQ.Views.Monitoring;
 using ConSight.DONGBO.DAQ.Views;
@@ -20,67 +10,46 @@ namespace ConSight.DONGBO.DAQ;
 
 public partial class MainWindow : Window
 {
-    private const string ConnectionString =
-        @"Server=.\SQLEXPRESS;Database=DB_eM;Integrated Security=SSPI;TrustServerCertificate=True";
-
-    private readonly ProcessEventBus _eventBus = new();
     private Inquiry_OP200_ResourceLotHistoryViewModel_EfCore _efVm = null!;
-
-    private TcpPlcDriver _tcpDriver = null!;
-    private PlcReadLoop  _plcLoop   = null!;
-    private readonly CancellationTokenSource _cts = new();
 
     public MainWindow()
     {
         InitializeComponent();
-        InitViews();
-
-        _eventBus.Subscribe(OnProcessCompleted);
+        Loaded += Window_Loaded;
+        Closed += Window_Closed;
     }
+
+    // ── 윈도우 이벤트 ─────────────────────────────────────────────────────
+
+    private void Window_Loaded(object sender, RoutedEventArgs e)
+    {
+        InitViews();
+        MainCore.Instance.Initialize();
+        MainCore.Instance.Start();
+        MainCore.Instance.EventBus.Subscribe(cFunc_EventBus_ProcessCompleted);
+        TxStatus.Text = "초기화 완료 — PLC 대기중";
+    }
+
+    private void Window_Closed(object? sender, EventArgs e) =>
+        MainCore.Instance.Shutdown();
+
+    // ── 뷰 초기화 (UI 배선만 담당) ────────────────────────────────────────
 
     private void InitViews()
     {
-        // ADO.NET View
-        var adoView = new Inquiry_OP200_ResourceLotHistoryView(ConnectionString);
-        AdoViewHost.Content = adoView;
+        AdoViewHost.Content = new Inquiry_OP200_ResourceLotHistoryView(MainCore.ConnectionString);
 
-        // EF Core View
-        _efVm = new Inquiry_OP200_ResourceLotHistoryViewModel_EfCore(ConnectionString);
+        _efVm = new Inquiry_OP200_ResourceLotHistoryViewModel_EfCore(MainCore.ConnectionString);
         _efVm.PropertyChanged += OnEfVmPropertyChanged;
-        var efView = new Inquiry_OP200_ResourceLotHistoryView(_efVm);
-        EfViewHost.Content = efView;
+        EfViewHost.Content = new Inquiry_OP200_ResourceLotHistoryView(_efVm);
 
-        TxStatus.Text = "연결 완료";
+        TestViewHost.Content = new ProcessPipelineTestView(MainCore.ConnectionString);
 
-        // Pipeline Test 탭
-        var testView = new ProcessPipelineTestView(ConnectionString);
-        TestViewHost.Content = testView;
-
-        // PLC 인프라 wire-up
-        _tcpDriver = new TcpPlcDriver("localhost", 5000);
-
-        var buf200 = new PlcWriteBuffer(_tcpDriver, "D2001", 3);
-        var buf210 = new PlcWriteBuffer(_tcpDriver, "D2201", 1);
-        var buf220 = new PlcWriteBuffer(_tcpDriver, "D2301", 1);
-        var buf230 = new PlcWriteBuffer(_tcpDriver, "D2401", 1);
-
-        var op200Write = new Op200WriteRegion(buf200);
-        var op210Write = new Op210WriteRegion(buf210);
-        var op220Write = new Op220WriteRegion(buf220);
-        var op230Write = new Op230WriteRegion(buf230);
-
-        var csvWriter   = new EmpgCsvWriter(Path.Combine(AppContext.BaseDirectory, "DAQ_CSV"));
-        var controlUnit = new ControlUnit_DAQ(
-            ConnectionString, op200Write, op210Write, op220Write, op230Write, csvWriter, _eventBus);
-
-        _plcLoop = new PlcReadLoop(_tcpDriver, controlUnit);
-
-        var monVm = new MonitoringViewModel(_eventBus);
-        MonitoringViewHost.Content = new MonitoringView(monVm);
-
-        _ = controlUnit.RunTimeTriggerLoopAsync(_cts.Token);
-        _ = _plcLoop.RunAsync(_cts.Token);
+        MonitoringViewHost.Content = new MonitoringView(
+            new MonitoringViewModel(MainCore.Instance.EventBus));
     }
+
+    // ── 콜백 ─────────────────────────────────────────────────────────────
 
     private void OnEfVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -88,18 +57,11 @@ public partial class MainWindow : Window
             TxEfElapsed.Text = _efVm.LastQueryElapsedMs.ToString("N0");
     }
 
-    // 공정 완료 이벤트 — 백그라운드 스레드에서 호출되므로 Dispatcher 경유
-    private void OnProcessCompleted(EmpgRow row)
+    private void cFunc_EventBus_ProcessCompleted(EmpgRow row)
     {
         Dispatcher.InvokeAsync(() =>
         {
             TxStatus.Text = $"[{DateTime.Now:HH:mm:ss}] {row.Model}  {row.MatSerial01}  {row.TotalJudge}";
         }, DispatcherPriority.Normal);
-    }
-
-    private void Window_Closed(object? sender, EventArgs e)
-    {
-        _cts.Cancel();
-        _tcpDriver?.CloseConnection();
     }
 }
