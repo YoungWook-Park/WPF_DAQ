@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "PLAN.md",
+                "file": "CLAUDE.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "PLAN"
+              "title": "CLAUDE"
             }
           }
         ]
@@ -183,18 +183,32 @@
       "bases:새 베이스 생성하기": false
     }
   },
-  "active": "ff7e3f482cc90cfe",
+  "active": "088579abc185c449",
   "lastOpenFiles": [
-    "PROGRESS.md.tmp.2144.1777380255644",
-    "src/ConSight.DONGBO.DAQ/obj/Debug/net10.0-windows/ConSight.DONGBO.DAQ_5g3o5z44_wpftmp.GlobalUsings.g.cs",
-    "src/ConSight.DONGBO.DAQ/obj/Debug/net10.0-windows/ConSight.DONGBO.DAQ_5g3o5z44_wpftmp.AssemblyInfo.cs",
-    "src/ConSight.DONGBO.DAQ/obj/Debug/net10.0-windows/ConSight.DONGBO.DAQ_5g3o5z44_wpftmp.AssemblyInfoInputs.cache",
-    "src/ConSight.DONGBO.DAQ/obj/Debug/net10.0-windows/ConSight.DONGBO.DAQ_5g3o5z44_wpftmp.GeneratedMSBuildEditorConfig.editorconfig",
-    "src/ConSight.DONGBO.DAQ/obj/Debug/net10.0-windows/ConSight.DONGBO.DAQ_5g3o5z44_wpftmp.assets.cache",
-    "src/ConSight.DONGBO.DAQ/ConSight.DONGBO.DAQ_5g3o5z44_wpftmp.csproj",
-    "src/ConSight.DONGBO.DAQ/obj/ConSight.DONGBO.DAQ_5g3o5z44_wpftmp.csproj.nuget.g.targets",
-    "src/ConSight.DONGBO.DAQ/obj/ConSight.DONGBO.DAQ_5g3o5z44_wpftmp.csproj.nuget.dgspec.json",
-    "src/ConSight.DONGBO.DAQ/obj/ConSight.DONGBO.DAQ_5g3o5z44_wpftmp.csproj.nuget.g.props",
-    "src/ConSight.DONGBO.DAQ/obj/Debug/net10.0-windows/43fwguyd.d53~"
+    "src/ConSight.DONGBO.DAQ/obj/Debug/net10.0-windows/ConSight.DONGBO.DAQ_MarkupCompile.i.lref",
+    "docs/test-cases.md",
+    "docs/architecture.md",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "README.md.tmp.28404.f045caed9c01",
+    "PROGRESS.md.tmp.28404.30baddeb84ac",
+    "PLAN.md.tmp.28404.212e5ab9747d",
+    "src/ConSight.DONGBO.DAQ.Tests/bin/Release/net10.0-windows/ConSight.DONGBO.PlcSimulator.exe",
+    "src/ConSight.DONGBO.DAQ.Tests/bin/Release/net10.0-windows/vevhsrfh.r2v~",
+    "src/Bi.ConSight.SqlAgent/obj/8507afdf-ae30-41e2-bd7c-33c27c23e5b6.tmp",
+    "PLAN.md",
+    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/it/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll",
+    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/it/Microsoft.VisualStudio.TestPlatform.Common.resources.dll",
+    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/it/Microsoft.TestPlatform.CoreUtilities.resources.dll",
+    "src/ConSight.DONGBO.DAQ.Tests/bin/Debug/net10.0-windows/it/Microsoft.TestPlatform.CrossPlatEngine.resources.dll",
+    "docs/impl-plan.md",
+    "docs/featureA-work-plan.md",
+    "benchmark/phase2_with_index.md",
+    "benchmark/phase3_efcore.md",
+    "benchmark/phase1_no_index.md",
+    "devlog/2026-05-14.md",
+    "devlog/2026-05-07.md",
+    "README.md",
+    "PROGRESS.md"
   ]
 }
