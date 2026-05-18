@@ -4,5 +4,9 @@
       "PowerShell(dotnet new classlib *)",
       "PowerShell(dotnet new wpf *)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "jira"
+  ],
+  "enableAllProjectMcpServers": true
 }
