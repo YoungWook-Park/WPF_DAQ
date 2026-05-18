@@ -343,6 +343,8 @@ namespace ConSight.DONGBO.DAQ.Views
 
         // ────────────────────────────────────────────────────────────────
         // Mock short[] 배열 빌더 — PLC 오프셋 규칙 그대로 적용
+        // 이 빌더 로직은 ConSight.DONGBO.PlcSimulator.Logic.MockArrayBuilder 에 복제됨.
+        // 오프셋·값 수정 시 MockArrayBuilder 도 반드시 동기화할 것.
         // ────────────────────────────────────────────────────────────────
 
         // OP200 공정 배열 (proc, D2000 기준, 100 words)

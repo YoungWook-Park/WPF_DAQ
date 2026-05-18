@@ -6,7 +6,8 @@
         mc:Ignorable="d"
         Title="ConSight DONG_BO DAQ — 리팩토링 포트폴리오"
         Height="900" Width="1440"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Closed="Window_Closed">
 
     <DockPanel>
         <!-- ── 상단 정보 바 ─────────────────────────────────────────────────── -->
@@ -29,8 +30,19 @@
             </StackPanel>
         </Border>
 
-        <!-- ── 탭: ADO.NET / EF Core ────────────────────────────────────────── -->
+        <!-- ── 탭: Monitoring / ADO.NET / EF Core / Pipeline Test ─────────── -->
         <TabControl x:Name="MainTab" Background="#F0F0F0">
+
+            <!-- Monitoring 탭 -->
+            <TabItem x:Name="TabMonitoring">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Monitoring" FontWeight="Bold" FontSize="13" Foreground="#CC6600"/>
+                        <TextBlock Text=" (실시간)" Foreground="Gray" FontSize="11" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+                <ContentControl x:Name="MonitoringViewHost"/>
+            </TabItem>
 
             <!-- ADO.NET 탭 -->
             <TabItem x:Name="TabAdo">

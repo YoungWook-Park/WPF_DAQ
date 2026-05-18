@@ -77,10 +77,22 @@ namespace ConSight.DAQ.Sequence
             //FeatureA Edit
             try
             {
+                // EMPG.MODEL → STS_MODEL_TB.MODEL FK 때문에 모델 upsert를 먼저 수행한다.
+                var ssmsModel = new SSMS_Model(_connectionString);
+                var model     = ssmsModel.GetByModel(dto.Model);
+                if (model == null)
+                {
+                    model = new ModelProduction(dto.Model);
+                    model.ApplyResult(dto.TotalJudge);
+                    ssmsModel.Insert(model);
+                }
+                else
+                {
+                    model.ApplyResult(dto.TotalJudge);
+                    ssmsModel.Update(model);
+                }
+
                 var ssms200 = new SSMS_Op200(_connectionString);
-                //FeatureB Edit
-                //FeatureA Edit
-                //FeatureA Edit
 
                 // ShaftSerial → GearSerial 순으로 기존 행 조회
                 var existing = ssms200.FindBySerial(dto.ShaftSerial);
@@ -102,21 +114,6 @@ namespace ConSight.DAQ.Sequence
                     ssms200.Insert(row);
                     _log.WriteInformation(
                         $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] OP200 INSERT  Serial={dto.ShaftSerial}  판정={dto.TotalJudge}");
-                }
-
-                // 모델 통계 갱신
-                var ssmsModel = new SSMS_Model(_connectionString);
-                var model     = ssmsModel.GetByModel(dto.Model);
-                if (model == null)
-                {
-                    model = new ModelProduction(dto.Model);
-                    model.ApplyResult(dto.TotalJudge);
-                    ssmsModel.Insert(model);
-                }
-                else
-                {
-                    model.ApplyResult(dto.TotalJudge);
-                    ssmsModel.Update(model);
                 }
 
                 _csvWriter.Append(row);

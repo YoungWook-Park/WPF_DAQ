@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "CLAUDE.md",
+                "file": "docs/test-cases.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "CLAUDE"
+              "title": "test-cases"
             }
           }
         ]
@@ -185,11 +185,10 @@
   },
   "active": "088579abc185c449",
   "lastOpenFiles": [
-    "src/ConSight.DONGBO.DAQ/obj/Debug/net10.0-windows/ConSight.DONGBO.DAQ_MarkupCompile.i.lref",
-    "docs/test-cases.md",
     "docs/architecture.md",
     "CLAUDE.md",
     "AGENTS.md",
+    "docs/test-cases.md",
     "README.md.tmp.28404.f045caed9c01",
     "PROGRESS.md.tmp.28404.30baddeb84ac",
     "PLAN.md.tmp.28404.212e5ab9747d",
