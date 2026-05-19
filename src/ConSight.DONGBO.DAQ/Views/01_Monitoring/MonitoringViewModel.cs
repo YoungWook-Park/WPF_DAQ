@@ -1,35 +1,54 @@
 using System.Collections.ObjectModel;
-using System.Windows;
+using System.Reactive.Linq;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using ConSight.DAQ.AppEvent;
 using ConSight.DAQ.Device.DB;
 
 namespace ConSight.DAQ.Views.Monitoring
 {
-    public sealed class MonitoringViewModel
+    public sealed class MonitoringViewModel : ObservableObject, IDisposable
     {
         public ObservableCollection<EmpgRow> Rows { get; } = [];
-        private const int MaxRows = 200;
+        private const int MaxRows = 100;
+
+        private readonly IDisposable _subscription;
+
+        public IRelayCommand Cmd_UcLoadedCommand { get; }
+        public IRelayCommand<bool> CMD_VisibleChanged { get; }
 
         public MonitoringViewModel(IProcessEventBus eventBus)
         {
-            eventBus.Subscribe(OnRow);
+            _subscription = eventBus.AsObservable()
+                .ObserveOn(SynchronizationContext.Current!)
+                .Subscribe(OnRow);
+
+            Cmd_UcLoadedCommand = new RelayCommand(PerformCmd_UcLoaded);
+            CMD_VisibleChanged = new RelayCommand<bool>(PerformCMD_VisibleChanged);
         }
 
+        public void Dispose() => _subscription.Dispose();
+
+        private void PerformCmd_UcLoaded()
+        {
+        }
+
+        private void PerformCMD_VisibleChanged(bool visible)
+        {
+        }
+
+        // ObserveOnDispatcher() 로 UI 스레드 전환 — Application.Current.Dispatcher 불필요
         private void OnRow(EmpgRow row)
         {
-            // Publish는 백그라운드 스레드에서 호출 → UI 컬렉션 변경은 Dispatcher 경유
-            Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                int idx = FindRow(row);
-                if (idx >= 0)
-                    Rows[idx] = row;          // OP210/220/230: 기존 행 갱신
-                else
-                {
-                    Rows.Insert(0, row);       // OP200: 신규 행 최상단 삽입
-                    if (Rows.Count > MaxRows)
-                        Rows.RemoveAt(Rows.Count - 1);
-                }
-            });
+            //int idx = FindRow(row);
+            //if (idx >= 0)
+            //    Rows[idx] = row;
+            //else
+            //{
+            Rows.Insert(0, row);
+            if (Rows.Count > MaxRows)
+                Rows.RemoveAt(Rows.Count - 1);
+            //}
         }
 
         // MatSerial01 기준으로 기존 행 탐색. 없으면 -1 반환.

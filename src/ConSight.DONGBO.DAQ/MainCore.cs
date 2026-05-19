@@ -21,9 +21,9 @@ public sealed partial class MainCore
     public LogWriter       Log      { get; } = new();
     public ProcessEventBus EventBus { get; } = new();
 
-    public TcpPlcDriver    PlcDriver   { get; private set; } = null!;
-    public ControlUnit_DAQ ControlUnit { get; private set; } = null!;
-    public PlcReadLoop     PlcLoop     { get; private set; } = null!;
+    internal TcpPlcDriver    PlcDriver   { get; private set; } = null!;
+    internal ControlUnit_DAQ ControlUnit { get; private set; } = null!;
+    internal PlcReadLoop     PlcLoop     { get; private set; } = null!;
 
     public const string ConnectionString =
         @"Server=.\SQLEXPRESS;Database=DB_eM;Integrated Security=SSPI;TrustServerCertificate=True";
@@ -38,6 +38,8 @@ public sealed partial class MainCore
 
     public void Initialize()
     {
+        if (PlcLoop is not null) return;
+
         Log.WriteInformation(
             $"Location={nameof(MainCore)}, Function={nameof(Initialize)}, Action=디바이스 초기화 시작");
 
@@ -82,7 +84,9 @@ public sealed partial class MainCore
     public void Shutdown()
     {
         _cts.Cancel();
+        _eventBusSubscription?.Dispose();
         PlcDriver?.CloseConnection();
+        EventBus.Dispose();
 
         Log.WriteInformation(
             $"Location={nameof(MainCore)}, Function={nameof(Shutdown)}, Action=DAQ 종료");

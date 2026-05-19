@@ -7,6 +7,7 @@
         Title="ConSight DONG_BO DAQ — 리팩토링 포트폴리오"
         Height="900" Width="1440"
         WindowStartupLocation="CenterScreen"
+        Loaded="Window_Loaded"
         Closed="Window_Closed">
 
     <DockPanel>
@@ -17,7 +18,7 @@
                 <TextBlock Text=" | " Foreground="#555555" VerticalAlignment="Center"/>
                 <TextBlock Text="EMPG 500,022건 / EMPG_HIS 500,000건" Foreground="#AAAAAA" FontSize="12" VerticalAlignment="Center"/>
                 <TextBlock Text=" | " Foreground="#555555" VerticalAlignment="Center"/>
-                <TextBlock x:Name="TxStatus" Text="준비" Foreground="#00CC66" FontSize="12" VerticalAlignment="Center"/>
+                <TextBlock x:Name="TxStatus" Text="{Binding TxStatusText}" Foreground="#00CC66" FontSize="12" VerticalAlignment="Center"/>
             </StackPanel>
         </Border>
 
@@ -25,7 +26,7 @@
         <Border DockPanel.Dock="Bottom" Background="#1E1E1E" Height="24">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10 0">
                 <TextBlock Text="마지막 조회 (EF Core): " Foreground="#888888" FontSize="11"/>
-                <TextBlock x:Name="TxEfElapsed" Text="—" Foreground="#00AAFF" FontSize="11"/>
+                <TextBlock x:Name="TxEfElapsed" Text="{Binding TxEfElapsedText}" Foreground="#00AAFF" FontSize="11"/>
                 <TextBlock Text=" ms" Foreground="#888888" FontSize="11"/>
             </StackPanel>
         </Border>

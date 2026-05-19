@@ -6,6 +6,7 @@
 //
 // mock 배열 레이아웃은 각 OpXxxParser 주석의 PLC 주소 오프셋을 그대로 따른다.
 
+using System.Reactive.Linq;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -34,8 +35,8 @@ namespace ConSight.DONGBO.DAQ.Views
 
         // ── 파이프라인 인프라 (MockPLC 기반) ─────────────────────────────
         private readonly MockPlcDriver     _mockPlc   = new();
-        private readonly ProcessEventBus   _eventBus  = new();
         private readonly ControlUnit_DAQ   _unit;
+        private IDisposable? _eventBusSubscription;
 
         // ── 마지막으로 파싱한 DTO (파이프라인 버튼에서 재사용) ─────────────
         private Op200ProcessDto? _lastDto200;
@@ -43,7 +44,7 @@ namespace ConSight.DONGBO.DAQ.Views
         private Op220ProcessDto? _lastDto220;
         private Op230ProcessDto? _lastDto230;
 
-        public ProcessPipelineTestView(string connectionString)
+        public ProcessPipelineTestView(string connectionString, IProcessEventBus sharedEventBus)
         {
             _connectionString = connectionString;
             InitializeComponent();
@@ -59,10 +60,12 @@ namespace ConSight.DONGBO.DAQ.Views
             _unit = new ControlUnit_DAQ(
                 connectionString,
                 op200Write, op210Write, op220Write, op230Write,
-                csvWriter, _eventBus);
+                csvWriter, sharedEventBus);
 
-            // EventBus 구독 — 파이프라인 결과 수신
-            _eventBus.Subscribe(OnEventBusRow);
+            // EventBus 구독 — 파이프라인 결과 수신 (MonitoringView 와 동일 버스 공유)
+            _eventBusSubscription = sharedEventBus.AsObservable()
+                .ObserveOn(SynchronizationContext.Current!)
+                .Subscribe(OnEventBusRow);
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -216,13 +219,10 @@ namespace ConSight.DONGBO.DAQ.Views
         // EventBus 콜백 (ProcessData_Opxxx 내부에서 호출됨)
         // ────────────────────────────────────────────────────────────────
 
+        // ObserveOnDispatcher() 로 UI 스레드 전환 — Dispatcher.InvokeAsync 불필요
         private void OnEventBusRow(EmpgRow row)
         {
-            // 백그라운드 스레드에서 호출될 수 있으므로 Dispatcher 경유
-            Dispatcher.InvokeAsync(() =>
-            {
-                AppendLine($"  [EventBus] Publish 수신 → Model={row.Model}  Serial={row.MatSerial01}  TotalJudge={row.TotalJudge}");
-            });
+            AppendLine($"  [EventBus] Publish 수신 → Model={row.Model}  Serial={row.MatSerial01}  TotalJudge={row.TotalJudge}");
         }
 
         // ────────────────────────────────────────────────────────────────
